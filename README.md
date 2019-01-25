@@ -1,6 +1,6 @@
-======
+
 Starting_Small
-======
+==============
 
 Research code to train and evaluate RNN Language Models as models of child semantic development.
 
