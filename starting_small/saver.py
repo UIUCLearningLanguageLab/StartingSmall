@@ -2,7 +2,7 @@ import pyprind
 import numpy as np
 import pandas as pd
 from bayes_opt import BayesianOptimization
-from shutil import copyfile
+from functools import partial
 from sklearn.metrics.pairwise import cosine_similarity
 from pathlib import Path
 
@@ -39,7 +39,6 @@ class Saver:
             self.hub.switch_mode(mode)
             self.save_acts_df(mb_name)
             self.save_pp_traj_df(mb_name)
-            self.save_fs_traj_df(mb_name)  # TODO save both fs and ba and chose which to load in ludwiglab
             self.save_ba_traj_df(mb_name)
 
     # ///////////////////////////////////////////////////////////////////////////////// probes
@@ -57,74 +56,95 @@ class Saver:
         result = pp_df[['probe_id', 'probe_pp']].groupby('probe_id').mean()['probe_pp'].round(2).values.tolist()
         return result
 
+    def score(self, hub, sims_mat, verbose=False):
+        if verbose:
+            print('Mean of eval_sims_mat={:.4f}'.format(sims_mat.mean()))
+
+
+        # TODO get row and col words from hub
+        raise NotImplementedError
+
+        # make gold (signal detection masks)
+        num_rows = len(self.row_words)
+        num_cols = len(self.col_words)
+        res = np.zeros((num_rows, num_cols))
+        for i in range(num_rows):
+            relata1 = self.probe2relata[self.row_words[i]]
+            for j in range(num_cols):
+                relatum2 = self.col_words[j]
+                if relatum2 in relata1:
+                    res[i, j] = 1
+        gold = res.astype(np.bool)
+
+        def calc_signals(probe_sims, gold, thr):  # vectorized algorithm is 20X faster
+            predicted = np.zeros_like(probe_sims, int)
+            predicted[np.where(probe_sims > thr)] = 1
+            tp = float(len(np.where((predicted == gold) & (gold == 1))[0]))
+            tn = float(len(np.where((predicted == gold) & (gold == 0))[0]))
+            fp = float(len(np.where((predicted != gold) & (gold == 0))[0]))
+            fn = float(len(np.where((predicted != gold) & (gold == 1))[0]))
+            return tp, tn, fp, fn
+
+        # balanced acc
+        calc_signals = partial(calc_signals, sims_mat, gold)
+        sims_mean = np.asscalar(np.mean(sims_mat))
+        res = self.calc_cluster_score(calc_signals, sims_mean, verbose=False)
+        return res
+
     @staticmethod
-    def calc_avg_probe_p_and_r_lists(hub, probe_simmat, analysis_name):
-        def calc_p_and_r(thr):
-            hits = np.zeros(hub.probe_store.num_probes, float)
-            misses = np.zeros(hub.probe_store.num_probes, float)
-            fas = np.zeros(hub.probe_store.num_probes, float)
-            crs = np.zeros(hub.probe_store.num_probes, float)
-            # calc hits, misses, false alarms, correct rejections
-            for i in range(hub.probe_store.num_probes):
-                probe1 = hub.probe_store.types[i]
-                cat1 = hub.probe_store.probe_cat_dict[probe1]
-                for j in range(hub.probe_store.num_probes):
-                    if i != j:
-                        probe2 = hub.probe_store.types[j]
-                        cat2 = hub.probe_store.probe_cat_dict[probe2]
-                        sim = probe_simmat[i, j]
-                        if cat1 == cat2:
-                            if sim > thr:
-                                hits[i] += 1
-                            else:
-                                misses[i] += 1
-                        else:
-                            if sim > thr:
-                                fas[i] += 1
-                            else:
-                                crs[i] += 1
-            avg_probe_recall_list = np.divide(hits + 1, (hits + misses + 1))  # + 1 prevents inf and nan
-            avg_probe_precision_list = np.divide(crs + 1, (crs + fas + 1))
-            return avg_probe_precision_list, avg_probe_recall_list
+    def calc_cluster_score(calc_signals, sims_mean, verbose=True):
 
         def calc_probes_fs(thr):
-            precision, recall = calc_p_and_r(thr)
-            probe_fs_list = 2 * (precision * recall) / (precision + recall)  # f1-score
-            res = np.mean(probe_fs_list)
-            return res
+            tp, tn, fp, fn = calc_signals(thr)
+            precision = np.divide(tp + 1e-10, (tp + fp + 1e-10))
+            sensitivity = np.divide(tp + 1e-10, (tp + fn + 1e-10))  # aka recall
+            fs = 2 * (precision * sensitivity) / (precision + sensitivity)
+            print('prec={:.2f} sens={:.2f}, | tp={} tn={} | fp={} fn={}'.format(precision, sensitivity, tp, tn, fp, fn))
+            return fs
+
+        def calc_probes_ck(thr):
+            """
+            cohen's kappa
+            """
+            tp, tn, fp, fn = calc_signals(thr)
+            totA = np.divide(tp + tn, (tp + tn + fp + fn))
+            #
+            pyes = ((tp + fp) / (tp + fp + tn + fn)) * ((tp + fn) / (tp + fp + tn + fn))
+            pno = ((fn + tn) / (tp + fp + tn + fn)) * ((fp + tn) / (tp + fp + tn + fn))
+            #
+            randA = pyes + pno
+            ck = (totA - randA) / (1 - randA)
+            # print('totA={:.2f} randA={:.2f}'.format(totA, randA))
+            return ck
 
         def calc_probes_ba(thr):
-            precision, recall = calc_p_and_r(thr)
-            probe_ba_list = (precision + recall) / 2  # balanced accuracy
-            res = np.mean(probe_ba_list)
-            return res
+            tp, tn, fp, fn = calc_signals(thr)
+            specificity = np.divide(tn + 1e-10, (tn + fp + 1e-10))
+            sensitivity = np.divide(tp + 1e-10, (tp + fn + 1e-10))  # aka recall
+            ba = (sensitivity + specificity) / 2  # balanced accuracy
+            return ba
 
-        # make thr range
-        probe_simmat_mean = np.asscalar(np.mean(probe_simmat))
-        thr1 = max(0.0, round(min(0.9, round(probe_simmat_mean, 2)) - 0.1, 2))  # don't change
-        thr2 = round(thr1 + 0.2, 2)
         # use bayes optimization to find best_thr
-        print('Calculating {}'.format(analysis_name))
-        print('Finding best thresholds between {} and {} using bayesian-optimization...'.format(thr1, thr2))
+        print('Finding best thresholds between using bayesian-optimization...')
         gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}
-        if analysis_name == 'fs':
-            fn = calc_probes_fs
-        elif analysis_name == 'ba':
-            fn = calc_probes_ba
-        elif analysis_name == 'ra':
-            raise NotImplementedError
-        elif analysis_name == 'im':
-            raise NotImplementedError
+        if config.Saver.matching_metric == 'F1':
+            fun = calc_probes_fs
+        elif config.Saver.matching_metric == 'BalAcc':
+            fun = calc_probes_ba
+        elif config.Saver.matching_metric == 'CohensKappa':
+            fun = calc_probes_ck
         else:
-            raise AttributeError('starting_small: Invalid arg to "analysis_name".')
-        bo = BayesianOptimization(fn, {'thr': (thr1, thr2)}, verbose=config.Saver.PRINT_BAYES_OPT)
-        bo.explore({'thr': [probe_simmat_mean]})
-        bo.maximize(init_points=2, n_iter=config.Saver.NUM_BAYES_STEPS,
-                    acq="poi", xi=0.001, **gp_params)  # smaller xi: exploitation
+            raise AttributeError('rnnlab: Invalid arg to "metric".')
+        bo = BayesianOptimization(fun, {'thr': (-1.0, 1.0)}, verbose=verbose)
+        bo.explore(
+            {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
+        bo.maximize(init_points=2, n_iter=config.Saver.num_opt_steps,
+                    acq="poi", xi=0.01, **gp_params)  # smaller xi: exploitation
         best_thr = bo.res['max']['max_params']['thr']
         # use best_thr
-        result = calc_p_and_r(best_thr)
-        return result
+        results = fun(best_thr)
+        res = np.mean(results)
+        return res
 
     def make_probe_prototype_acts_mat(self, context_type):
         print('Making "{}" "{}" probe prototype activations...'.format(self.hub.mode, context_type))
@@ -173,27 +193,12 @@ class Saver:
         acts_df.to_hdf(path, key='acts_{}_df'.format(self.hub.mode), mode='a', format='fixed',
                        complevel=9, complib='blosc')  # TODO test compression
 
-    def save_fs_traj_df(self, mb_name):
-        # make
-        probe_simmat_o = cosine_similarity(self.make_probe_prototype_acts_mat('ordered'))
-        avg_probe_p_o_list, avg_probe_r_o_list = self.calc_avg_probe_p_and_r_lists(self.hub, probe_simmat_o, 'fs')
-        fs_traj_df_row = self.make_traj_df_row(mb_name,
-                                               ['p_o', 'r_o'],
-                                               avg_probe_p_o_list,
-                                               avg_probe_r_o_list)
-        # save
-        path = Path(self.params.runs_dir) / self.params.model_name / 'Data_Frame' / 'fs_traj_df.h5'
-        fs_traj_df_row.to_hdf(path, key='fs_{}_traj_df'.format(self.hub.mode),
-                              mode='a', format='table', min_itemsize={'index': 15}, append=True)
-
     def save_ba_traj_df(self, mb_name):
         # make
         probe_simmat_o = cosine_similarity(self.make_probe_prototype_acts_mat('ordered'))
-        avg_probe_p_o_list, avg_probe_r_o_list = self.calc_avg_probe_p_and_r_lists(self.hub, probe_simmat_o, 'ba')
-        ba_traj_df_row = self.make_traj_df_row(mb_name,
-                                               ['p_o', 'r_o'],
-                                               avg_probe_p_o_list,
-                                               avg_probe_r_o_list)
+        probes_ba = self.score(self.hub, probe_simmat_o)
+        ba_traj_df_row = pd.DataFrame(index=[mb_name])
+        ba_traj_df_row['probes_ba'] = probes_ba
         # save
         path = Path(self.params.runs_dir) / self.params.model_name / 'Data_Frame' / 'ba_traj_df.h5'
         ba_traj_df_row.to_hdf(path, key='ba_{}_traj_df'.format(self.hub.mode),
@@ -202,19 +207,13 @@ class Saver:
     def save_pp_traj_df(self, mb_name):
         # make
         avg_probe_pp_list = self.calc_avg_probe_pp_list()
-        pp_traj_df_row = self.make_traj_df_row(mb_name, [''], avg_probe_pp_list)
+        probes_pp = np.mean(avg_probe_pp_list)
+        pp_traj_df_row = pd.DataFrame(index=[mb_name])
+        pp_traj_df_row['probes_ba'] = probes_pp
         # save
         path = Path(self.params.runs_dir) / self.params.model_name / 'Data_Frame' / 'pp_traj_df.h5'
         pp_traj_df_row.to_hdf(path, key='pp_{}_traj_df'.format(self.hub.mode),
                               mode='a', format='table', min_itemsize={'index': 15}, append=True)
-
-    def make_traj_df_row(self, mb_name, suffixes, *probe_eval_lists):
-        result = pd.DataFrame(index=[mb_name])
-        for suffix, probe_eval_list in zip(suffixes, probe_eval_lists):
-            for probe, probe_eval in zip(self.hub.probe_store.types, probe_eval_list):
-                col_label = '{}_{}'.format(probe, suffix)
-                result[col_label] = probe_eval
-        return result
 
     # ///////////////////////////////////////////////////////////////////////////////// misc
 
@@ -229,37 +228,6 @@ class Saver:
         path = Path(self.params.runs_dir) / self.params.model_name / 'Checkpoints' / "checkpoint_mb_{}.ckpt".format(mb_name)
         self.ckpt_saver.save(self.sess, str(path))
         print('Saved checkpoint.')
-
-    def backup(self):
-        """
-        this informs LudwigCluster that training has completed (backup is only called after training completion)
-        copies all data created during training to backup_dir.
-        Uses custom copytree fxn to avoid permission errors when updating permissions with shutil.copytree.
-        Copying permissions can be problematic on smb/cifs type backup drive.
-        """
-        src = Path(self.params.runs_dir) / self.params.model_name
-        dst = Path(self.params.backup_dir) / self.params.model_name
-
-        def copytree(s, d):
-            d.mkdir()
-            for i in s.iterdir():
-                s_i = s / i.name
-                d_i = d / i.name
-                if s_i.is_dir():
-                    copytree(s_i, d_i)
-
-                else:
-                    copyfile(str(s_i), str(d_i))  # copyfile works because it doesn't update any permissions
-        # copy
-        print('Backing up data...')
-        try:
-            copytree(src, dst)
-        except PermissionError:
-            print('starting_small: Backup failed. Permission denied.')
-        except FileExistsError:
-            print('starting_small: Already backed up')
-        else:
-            print('Backed up data to {}'.format(dst))
 
     def run_sess(self, x, y, to_get):
         feed_dict = {self.graph.x: x, self.graph.y: y}

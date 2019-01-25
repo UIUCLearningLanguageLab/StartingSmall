@@ -12,7 +12,7 @@ from starting_small.directgraph import DirectGraph
 
 def rnn_job(params):
     print(params, flush=True)
-    hub = Hub(params=params)
+    hub = Hub(params=params)  # TODO what to do with this?
     g = tf.Graph()
     with g.as_default():
         graph = DirectGraph(params, hub)
@@ -42,10 +42,7 @@ def rnn_job(params):
             # reinitialize recurrent weights
             if timepoint in make_reinit_timepoints(params):
                 reinit_weights(graph, sess, params)
-        saver.backup()  # this tells LudwigCluster that training has completed
         sess.close()
-        print('Training completed.\n\n\n')
-        return 'Completed'
 
 
 def make_reinit_timepoints(params):
