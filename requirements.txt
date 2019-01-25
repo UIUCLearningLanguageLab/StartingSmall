@@ -1,0 +1,13 @@
+PyYAML
+pandas
+pyprind
+sklearn
+scipy
+spacy==2.0.10
+bayesian-optimization==0.6
+tables
+python-dotenv
+sortedcontainers
+aiohttp
+tensorflow-gpu==1.4
+numpy
