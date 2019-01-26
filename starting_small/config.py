@@ -5,18 +5,21 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class Dirs:
-    src = Path(__file__).parent
-    root = src.parent
+    root = Path(__file__).parent.parent
+    src = root / 'src'
     corpora = root / 'corpora'
     #
-    remote_root = Path('/media/lab') / 'Starting_Small'
+    remote_root = Path('/media/lab') / 'StartingSmall'
+    runs = remote_root / 'runs'
+    backup = remote_root / 'backup'
+    tensorboard = remote_root / 'tensorboard'
 
 
-class Saver:
+class Eval:
     verbose_opt = True
     num_opt_steps = 10  # 10
     hub_modes = ['sem', 'syn']
-    matching_metric = 'BalAcc'
+    cluster_metric = 'BalAcc'
 
 
 class Graph:

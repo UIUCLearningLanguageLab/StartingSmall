@@ -9,5 +9,5 @@ tables
 python-dotenv
 sortedcontainers
 aiohttp
-tensorflow-gpu==1.4
+tensorflow-gpu==1.12.0
 numpy

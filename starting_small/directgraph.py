@@ -16,17 +16,16 @@ class DirectGraph:
     Defines a tensorflow graph of a recurrent neural network
     """
 
-    def __init__(self,
-                 params,
-                 hub,
-                 wx_mat=None,
-                 device=config.Graph.device):
+    def __init__(self, params, hub, wx_mat=None, device=config.Graph.device):
         self.params = params
 
         # placeholders
         self.x = tf.placeholder(tf.int32, [None, None])
         self.y = tf.placeholder(tf.int32, [None, None])
-        self.y_attention = tf.placeholder(tf.float32, shape=[None, None])
+        self.sem_ba_summary = tf.placeholder(tf.float32, shape=())
+        self.syn_ba_summary = tf.placeholder(tf.float32, shape=())
+        self.sem_f1_summary = tf.placeholder(tf.float32, shape=())
+        self.syn_f1_summary = tf.placeholder(tf.float32, shape=())
 
         # weights
         with tf.device('/cpu:0'):  # embedding op works on cpu only
@@ -71,20 +70,15 @@ class DirectGraph:
             final_state, representation = self.rnn_layers(x_embedded)
             # loss
             logit = tf.matmul(final_state, wy) + by
-            attention_3d = tf.tile(tf.expand_dims(self.y_attention, -1), [1, 1, self.params.num_types])
-            eyes = tf.eye(self.params.num_types, self.params.num_types, dtype=tf.float32)
-            y_eyed_3d = tf.nn.embedding_lookup(eyes, self.y)  # [mb, num_y, num_inputs]
-            y_eyed_3d_attended = y_eyed_3d * attention_3d
-            y_eyed_att = tf.reduce_sum(y_eyed_3d_attended, axis=1)  # [mb, num_inputs]
-            att_loss = tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=y_eyed_att)
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=self.y[:, 0])
             # optimizer
             if self.params.optimizer == 'adagrad':
                 optimizer = tf.train.AdagradOptimizer
             else:
                 optimizer = tf.train.GradientDescentOptimizer
+
             # public
-            self.train_step = optimizer(self.params.lr).minimize(tf.reduce_mean(att_loss))
+            self.train_step = optimizer(self.params.lr).minimize(tf.reduce_mean(loss))
             self.softmax_probs = tf.nn.softmax(logit)
             self.pred_ys = tf.argmax(self.softmax_probs, axis=1)
             self.pps = tf.exp(loss)
@@ -102,6 +96,13 @@ class DirectGraph:
                     tf.GraphKeys.GLOBAL_VARIABLES, scope=self.params.flavor + '0')
                 self.wh_adagrad, self.bh_adagrad = self.wh, self.bh  # TODO quick fix
 
+        # tensorboard
+        with tf.device('cpu'):
+            tf.summary.scalar('sem_balanced_accuracy', self.sem_ba_summary)
+            tf.summary.scalar('syn_balanced_accuracy', self.syn_ba_summary)
+            tf.summary.scalar('sem_f1-score', self.sem_f1_summary)
+            tf.summary.scalar('syn_f1-score', self.syn_f1_summary)
+            self.merged = tf.summary.merge_all()
 
     @property
     def cell(self):
@@ -133,7 +134,6 @@ class DirectGraph:
         all_states = []
         final_states = []
         for layer_id in range(self.params.num_layers):
-            print('Making layer {}...'.format(layer_id))
             # prev_layer
             try:
                 prev_layer = all_states[-1]
