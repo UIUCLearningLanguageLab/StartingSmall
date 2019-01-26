@@ -18,9 +18,6 @@ class Params:
                                                        'syntactic-mcdi',
                                                        'syntactic-mcdi']]),
                ('num_types', 4096, [[32768, 16384, 8192, 4096, 2048, 1024]]),
-               ('p_noise', 'no_0', [['late', 'early', 'all', 'no'],
-                                    [0, 1, 2, 3, 4, 5, 6]]),  # periodic noise
-               ('f_noise', 0, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]),  # term frequency noise
                ('part_order', 'inc_age', [['inc', 'dec', 'shuffled', 'unordered', 'middec', 'midinc'],
                                            ['age', 'punctuation', 'noun', 'pronoun', 'determiner', 'interjection',
                                             'preposition', '3-gram', '1-gram', 'entropy',
@@ -33,13 +30,9 @@ class Params:
                                             'prepositions-context-entropy-1-right',
                                             'verbs-context-entropy-1-right']]),
                ('num_iterations', 20, [[1, 2, 3, 4, 5, 10, 20]]),
-               ('syn2sem', 'dist_least_hard', [['freq', 'dist'],
-                                               ['least', 'all', 'most', 'l2m', 'm2l'],
-                                               ['soft', 'hard', 's2h', 'h2s']]),
                ('reinit', 'none_10_w', [['none', 'mid', 'all'],
                                         [10, 50, 60, 60, 80, 90, 100],
                                         ['w', 'a', 'w+a', 'b', 'w+b']]),  # w=weights, a=adagradm b=bias
-               ('num_y', 1, [[1, 4]]),
                ('num_saves', 10, [[1, 5, 10, 20]]),
                ('bptt_steps', 7, [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]),
                ('num_layers', 1, [[1, 2, 3, 4]]),
@@ -50,11 +43,6 @@ class Params:
                ('optimizer', 'adagrad', [['sgd', 'adagrad']]),
                ('embed_size', 512, [[2, 64, 128, 256, 512]]),
                ('wx_init', 'random', [['random', 'glove300']]),
-               ('num_x_shuffle', 0, [[0, 1, 2, 3, 4, 5, 6, 7]]),
-               ('start_bptt', 7, [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]),
-               ('runs_dir', None, None),
-               ('backup_dir', None, None),
-               ('model_name', None, None),
                ]
 
     default_dict = {o[0]: o[1] for o in options}
