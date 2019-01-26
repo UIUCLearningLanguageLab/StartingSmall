@@ -16,10 +16,12 @@ class Dirs:
 
 
 class Eval:
+    skip_term_sims = False
+    skip_pp = True
     verbose_opt = True
     num_opt_steps = 10  # 10
     hub_modes = ['sem', 'syn']
-    cluster_metric = 'BalAcc'
+    cluster_metrics = ['ba', 'f1', 'ck']
 
 
 class Graph:

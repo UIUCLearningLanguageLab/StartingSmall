@@ -22,10 +22,22 @@ class DirectGraph:
         # placeholders
         self.x = tf.placeholder(tf.int32, [None, None])
         self.y = tf.placeholder(tf.int32, [None, None])
-        self.sem_ba_summary = tf.placeholder(tf.float32, shape=())
-        self.syn_ba_summary = tf.placeholder(tf.float32, shape=())
-        self.sem_f1_summary = tf.placeholder(tf.float32, shape=())
-        self.syn_f1_summary = tf.placeholder(tf.float32, shape=())
+
+        self.cluster_name2placeholder = {}
+        for layer_id in range(self.params.num_layers):
+            for cluster_metric in config.Eval.cluster_metrics:
+                for hub_mode in config.Eval.cluster_metrics:
+                    name = '{}_{}_layer_{}'.format(hub_mode, cluster_metric, layer_id)
+                    self.cluster_name2placeholder[name] = tf.placeholder(tf.float32)
+
+        self.h_name2placeholder = {}
+        for layer_id in range(self.params.num_layers):  # TODO test
+            name = 'term_sims_layer_{}'.format(layer_id)
+            self.h_name2placeholder[name] = tf.placeholder(tf.float32)
+
+        self.train_pp_summary = tf.placeholder(tf.float32)
+        self.test_pp_summary = tf.placeholder(tf.float32)
+        self.wx_term_sims_summary = tf.placeholder(tf.float32)
 
         # weights
         with tf.device('/cpu:0'):  # embedding op works on cpu only
@@ -67,7 +79,8 @@ class DirectGraph:
         with tf.device(device):
             # rnn
             x_embedded = tf.nn.embedding_lookup(wx, self.x)
-            final_state, representation = self.rnn_layers(x_embedded)
+            hs = self.rnn_layers(x_embedded)
+            final_state = hs[-1]
             # loss
             logit = tf.matmul(final_state, wy) + by
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=self.y[:, 0])
@@ -83,9 +96,11 @@ class DirectGraph:
             self.pred_ys = tf.argmax(self.softmax_probs, axis=1)
             self.pps = tf.exp(loss)
             self.mean_pp = tf.exp(tf.reduce_mean(loss))  # used too calc test docs pp
-            self.representation = representation
+            self.h0 = hs[0]
+            self.h1 = hs[1] if params.num_layers == 2 else hs[0]
             self.wy = wy
             self.wx = wx
+            self.hs = hs
             self.wh = self.cell.trainable_variables
             if self.params.optimizer == 'adagrad':
                 self.wh, self.bh, self.wh_adagrad, self.bh_adagrad = tf.get_collection(
@@ -98,11 +113,19 @@ class DirectGraph:
 
         # tensorboard
         with tf.device('cpu'):
-            tf.summary.scalar('sem_balanced_accuracy', self.sem_ba_summary)
-            tf.summary.scalar('syn_balanced_accuracy', self.syn_ba_summary)
-            tf.summary.scalar('sem_f1-score', self.sem_f1_summary)
-            tf.summary.scalar('syn_f1-score', self.syn_f1_summary)
-            self.merged = tf.summary.merge_all()
+            self.misc_summaries = tf.summary.merge([
+                tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
+                tf.summary.scalar('train_pp', self.train_pp_summary),
+                tf.summary.scalar('test_pp', self.test_pp_summary),
+            ])
+            self.h_summaries = tf.summary.merge(
+                [tf.summary.scalar(k, v) for k, v in self.h_name2placeholder.items()])
+            self.cluster_summaries = tf.summary.merge(
+                [tf.summary.scalar(k, v) for k, v in self.cluster_name2placeholder.items()])
+
+            # do this every batch
+            self.mean_pp_summary = tf.summary.scalar('mean_pp', self.mean_pp)
+
 
     @property
     def cell(self):
@@ -132,8 +155,10 @@ class DirectGraph:
 
     def rnn_layers(self, x_embedded):
         all_states = []
-        final_states = []
+        hs = []
         for layer_id in range(self.params.num_layers):
+            if layer_id > 1:
+                raise AttributeError('More than 2 layers are not allowed. Embeddings are retrieved from first two.')
             # prev_layer
             try:
                 prev_layer = all_states[-1]
@@ -147,13 +172,9 @@ class DirectGraph:
             # calc state
             all_state, (c, h) = tf.nn.dynamic_rnn(
                 cell_, cell_input, dtype=tf.float32, scope=self.params.flavor + str(layer_id))  # TODO test scope
-            final_state = h  # this no longer has flexibility to use tf.tanh(c)
             # collect state
             all_states.append(all_state)
-            final_states.append(final_state)
-        # result
-        representation = final_states[self.params.rep_layer_id]
-        final_state = final_states[-1]
-        return final_state, representation
+            hs.append(h)
+        return hs
 
 

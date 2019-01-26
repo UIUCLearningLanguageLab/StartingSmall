@@ -7,7 +7,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from starting_small import config
 
 
-def make_probe_prototype_acts_mat(hub, context_type, graph, sess):
+def check_nans(mat, name='mat'):
+    if np.any(np.isnan(mat)):
+        num_nans = np.sum(np.isnan(mat))
+        print('Found {} Nans in {}'.format(num_nans, name), 'red')
+
+
+def make_probe_prototype_acts_mat(hub, context_type, graph, sess, h):
     print('Making "{}" "{}" probe prototype activations...'.format(hub.mode, context_type))
     probe_prototype_acts = []
     for n, probe_x_mat in enumerate(hub.probe_x_mats):
@@ -26,14 +32,14 @@ def make_probe_prototype_acts_mat(hub, context_type, graph, sess):
         else:
             raise AttributeError('starting_small: Invalid arg to "context_type".')
         # probe_act
-        probe_exemplar_acts_mat = sess.run(graph.representation, feed_dict={graph.x: x})
+        probe_exemplar_acts_mat = sess.run(h, feed_dict={graph.x: x})
         probe_prototype_act = np.mean(probe_exemplar_acts_mat, axis=0)
         probe_prototype_acts.append(probe_prototype_act)
     res = np.vstack(probe_prototype_acts)
     return res
 
 
-def calc_cluster_score(hub, graph, sess, cluster_metric):
+def calc_cluster_score(hub, probe_sims, cluster_metric):
     print('Computing {} score...'.format(cluster_metric))
     # make gold (signal detection masks)
     num_rows = hub.probe_store.num_probes
@@ -87,8 +93,6 @@ def calc_cluster_score(hub, graph, sess, cluster_metric):
         return ba
 
     # sims
-    probe_prototype_acts_mat = make_probe_prototype_acts_mat(hub, 'ordered', graph, sess)
-    probe_sims = cosine_similarity(probe_prototype_acts_mat)
     calc_signals = partial(calc_signals, probe_sims, gold)
     sims_mean = np.mean(probe_sims).item()
     # use bayes optimization to find best_thr
@@ -114,35 +118,32 @@ def calc_cluster_score(hub, graph, sess, cluster_metric):
     return res
 
 
-def term_sims2tb(hub, graph, sess):
-    print('Making prototype term activations...')
-    term_acts_mat_sum = np.zeros((hub.params.num_types, hub.params.embed_size))
+def calc_h_term_sims(hub, graph, sess, h):
+    print('Making h_term_sims...')
+    term_h_acts_sum = np.zeros((hub.params.num_types, hub.params.embed_size))
     # collect acts
     pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
     for (x, y) in hub.gen_ids(num_iterations=1):
         pbar.update()
-        acts_mat = sess.run(graph.representation, feed_dict={graph.x: x, graph.y: y})
-        # update term_acts_mat_sum
+        acts_mat = sess.run(h, feed_dict={graph.x: x, graph.y: y})
+        # update term_h_acts_sum
         last_term_ids = [term_id for term_id in x[:, -1]]
         for term_id, acts in zip(last_term_ids, acts_mat):
-            term_acts_mat_sum[term_id] += acts
-    # term_acts_mat
-    term_acts_mat = np.zeros_like(term_acts_mat_sum)
+            term_h_acts_sum[term_id] += acts
+    # term_h_acts
+    term_h_acts = np.zeros_like(term_h_acts_sum)
     for term, term_id in hub.train_terms.term_id_dict.items():
         term_freq = hub.train_terms.term_freq_dict[term]
-        term_acts_mat[term_id] = term_acts_mat_sum[term_id] / max(1.0, term_freq)
-    # simmat
-    term_simmat = cosine_similarity(term_acts_mat)
+        term_h_acts[term_id] = term_h_acts_sum[term_id] / max(1.0, term_freq)
+    # term_h_sims
+    res = cosine_similarity(term_h_acts)
     # nan check
-    if np.any(np.isnan(term_acts_mat)):
-        num_nans = np.sum(np.isnan(term_acts_mat))
-        print('Found {} Nans in term activations'.format(num_nans), 'red')
-    if np.any(np.isnan(term_simmat)):
-        num_nans = np.sum(np.isnan(term_simmat))
-        print('Found {} Nans in term sim_mat'.format(num_nans), 'red')
+    check_nans(term_h_acts, 'term_h_acts')
+    check_nans(res, 'term_h_sims')
+    return res
 
 
-def calc_pp(hub, graph, sess, timepoint, is_test):
+def calc_pp(hub, graph, sess, is_test):
     print('Calculating {} perplexity...'.format('test' if is_test else 'train'))
     pp_sum, num_batches, pp = 0, 0, 0
     pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
@@ -153,8 +154,4 @@ def calc_pp(hub, graph, sess, timepoint, is_test):
         num_batches += 1
     pp = pp_sum / num_batches
     print('pp={}'.format(pp))
-
-    # TODO sent to tensorboard
-
-
     return pp

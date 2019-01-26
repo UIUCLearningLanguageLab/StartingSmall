@@ -8,9 +8,9 @@ from shutil import copyfile
 from childeshub.hub import Hub
 
 from starting_small import config
-from starting_small.evals import calc_cluster_score, calc_pp, term_sims2tb
 from starting_small.directgraph import DirectGraph
 from starting_small.params import ObjectView
+from starting_small.summaries import write_misc_summaries, write_h_summaries, write_cluster_summaries
 
 
 def rnn_job(param2val):
@@ -20,25 +20,22 @@ def rnn_job(param2val):
         for x, y in train_mb_generator:
             pbar.update()
             # train step
-            sess.run(graph.train_step, feed_dict={graph.x: x, graph.y: y})
+            mean_pp_summary, _ = sess.run([graph.mean_pp_summary, graph.train_step], feed_dict={graph.x: x, graph.y: y})
+
+            # TODO when data_mb corresponds to timepoint, is mean_pp summary written twice?
+            # summary_writer.add_summary(mean_pp_summary, data_mb)
+
             train_mb += 1  # has to be like this, because enumerate() resets
             if data_mb == train_mb:
                 return train_mb
 
-    def evaluate(hub, graph, sess, summary_writer, timepoint):
-        print('Evaluating...')
-        # term_sims2tb(hub, graph, sess)  # TODO perhaps compute probe_sims from this?
-        feed_dict = {}
-        for mode, (ba_plh, f1_plh) in zip(config.Eval.hub_modes,
-                                     [(graph.sem_ba_summary, graph.sem_f1_summary),
-                                      (graph.syn_ba_summary, graph.syn_f1_summary)]):
-            hub.switch_mode(mode)
-            calc_pp(hub, graph, sess, timepoint, is_test=True)  # TODO send to tb every batch?
-            feed_dict[ba_plh] = calc_cluster_score(hub, graph, sess, 'ba')
-            feed_dict[f1_plh] = calc_cluster_score(hub, graph, sess, 'f1')
-            #
-        summary = sess.run(graph.merged, feed_dict=feed_dict)
-        summary_writer.add_summary(summary, timepoint)
+    def evaluate(hub, graph, sess, summary_writer, data_mb):
+        write_misc_summaries(hub, graph, sess, data_mb, summary_writer)
+        write_h_summaries(hub, graph, sess, data_mb, summary_writer)
+        write_cluster_summaries(hub, graph, sess, data_mb, summary_writer)
+
+        # TODO separate term_sims by POS (use hub POS information) and write to tensorboard
+
 
     def make_reinit_timepoints(params):
         if params.reinit.split('_')[0] == 'all':
@@ -85,13 +82,14 @@ def rnn_job(param2val):
     hub = Hub(params=params)
     g = tf.Graph()
     with g.as_default():
-        # graph + tensorflow
+        # tensorflow + tensorboard
         graph = DirectGraph(params, hub)
         tb_p = config.Dirs.tensorboard / param2val['job_name']
         if not tb_p.exists():
             tb_p.mkdir(parents=True)
         else:
-            tb_p.unlink()  # clear previous data
+            for p in tb_p.iterdir():
+                p.unlink()  # clear previous data
         sess = tf.Session()
         summary_writer = tf.summary.FileWriter(tb_p, sess.graph)
         sess.run(tf.global_variables_initializer())
@@ -102,11 +100,11 @@ def rnn_job(param2val):
         for timepoint, data_mb in enumerate(hub.data_mbs):
             if timepoint == 0:
                 # save
-                evaluate(hub, graph, sess, summary_writer, timepoint)
+                evaluate(hub, graph, sess, summary_writer, data_mb)
             else:
                 # train + save
                 train_mb = train_on_corpus(data_mb, train_mb, train_mb_generator, graph, sess)
-                evaluate(hub, graph, sess, summary_writer, timepoint)
+                evaluate(hub, graph, sess, summary_writer, data_mb)
             print('Completed Timepoint: {}/{} |Elapsed: {:>2} mins\n'.format(
                 timepoint, hub.params.num_saves, int(float(time.time() - start_train) / 60)))
             # reinitialize recurrent weights
