@@ -31,7 +31,13 @@ def run_on_host(sort_by='part_order'):  # parameter to show for each model in te
     run jobs on the local host for testing/development
     """
     from ludwigcluster.utils import list_all_param2vals
+    # clean tensorboard dir
     config.Dirs.tensorboard = config.Dirs.root / 'tensorboard'  # loads faster without network connection
+    for p in config.Dirs.tensorboard.rglob('events*'):
+        p.unlink()
+    for p in config.Dirs.tensorboard.iterdir():
+        p.rmdir()
+    #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
         param2val['job_name'] += param2val[sort_by]
         rnn_job(param2val)

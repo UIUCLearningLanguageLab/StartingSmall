@@ -64,12 +64,12 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
         fn = float(len(np.where((predicted != gold) & (gold == 1))[0]))
         return tp, tn, fp, fn
 
-    def calc_probes_fs(thr):  # TODO is wrong - tensorflow shows increasing f1 but this never does
+    def calc_probes_fs(thr):  # TODO is wrong - tensorflow shows increasing f1 but this fn never does
         tp, tn, fp, fn = calc_signals(thr)
         precision = np.divide(tp, (tp + fp))
         sensitivity = np.divide(tp, (tp + fn))  # aka recall
 
-        fs = 2.0 * precision * sensitivity / max(precision + sensitivity, 1e-7)  # TODO test
+        fs = 2.0 * precision * sensitivity / max(precision + sensitivity, 1e-7)
 
         return fs
 
@@ -109,7 +109,7 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
         fun = calc_probes_ck
     else:
         raise AttributeError('rnnlab: Invalid arg to "metric".')
-    bo = BayesianOptimization(fun, {'thr': (-1.0, 1.0)}, verbose=False)
+    bo = BayesianOptimization(fun, {'thr': (0.0, 1.0)}, verbose=False)
     bo.explore(
         {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
     bo.maximize(init_points=2, n_iter=config.Eval.num_opt_steps,

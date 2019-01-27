@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-import tensorflow as tf
 
 from starting_small import config
 from starting_small.evals import calc_pp, calc_h_term_sims, calc_cluster_score, make_probe_prototype_acts_mat
@@ -10,8 +9,7 @@ from starting_small.evals import make_gold
 def write_misc_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making misc_summaries...')
     misc_feed_dict = dict()
-    misc_feed_dict[graph.train_pp_summary] = calc_pp(hub, graph, sess, False)
-    misc_feed_dict[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)
+    misc_feed_dict[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)  # no need for train_pp
     wx_term_acts = sess.run(graph.wx)
     wx_term_sims = cosine_similarity(wx_term_acts)
     misc_feed_dict[graph.wx_term_sims_summary] = wx_term_sims[np.triu_indices(len(wx_term_sims), k=1)]
@@ -63,7 +61,6 @@ def write_pr_summaries(hub, graph, sess, data_mb, summary_writer):
             h = graph.hs[layer_id]
         except IndexError:
             continue
-
         for hub_mode in config.Eval.hub_modes:
             hub.switch_mode(hub_mode)
             # sims
@@ -79,7 +76,5 @@ def write_pr_summaries(hub, graph, sess, data_mb, summary_writer):
             labels_plh, predictions_plh = graph.pr_name2placeholders[name]
             pr_feed_dict[labels_plh] = labels
             pr_feed_dict[predictions_plh] = predictions
-            #
-            # sess.run(tf.local_variables_initializer())  # why is this needed? it prevents uninitialized variables error
     summary = sess.run(graph.pr_summaries, feed_dict=pr_feed_dict)
     summary_writer.add_summary(summary, data_mb)

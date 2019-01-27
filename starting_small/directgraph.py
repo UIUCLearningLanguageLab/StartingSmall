@@ -124,7 +124,6 @@ class DirectGraph:
         with tf.device('/cpu:0'):
             self.misc_summaries = tf.summary.merge([
                 tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
-                tf.summary.scalar('train_pp', self.train_pp_summary),
                 tf.summary.scalar('test_pp', self.test_pp_summary),
             ])
             self.h_summaries = tf.summary.merge(
