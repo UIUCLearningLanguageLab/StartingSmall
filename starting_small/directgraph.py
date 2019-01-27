@@ -27,10 +27,11 @@ class DirectGraph:
         # cluster placeholders
         self.cluster_name2placeholder = {}
         for layer_id in range(self.params.num_layers):
-            for cluster_metric in config.Eval.cluster_metrics:
-                for hub_mode in config.Eval.hub_modes:
-                    name = '{}_{}_layer_{}'.format(hub_mode, cluster_metric, layer_id)
-                    self.cluster_name2placeholder[name] = tf.placeholder(tf.float32)
+            for hub_mode in config.Eval.hub_modes:
+                for context_type in config.Eval.context_types:
+                    for cluster_metric in config.Eval.cluster_metrics:
+                        name = '{}_{}_{}_layer_{}'.format(hub_mode, context_type, cluster_metric, layer_id)
+                        self.cluster_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # cluster2 placeholders
         with tf.device('/cpu:0'):  # f1 only works on cpu
@@ -45,8 +46,9 @@ class DirectGraph:
         # h placeholders
         self.h_name2placeholder = {}
         for layer_id in range(self.params.num_layers):
-            name = 'h_term_sims_layer_{}'.format(layer_id)
-            self.h_name2placeholder[name] = tf.placeholder(tf.float32)
+            for context_type in config.Eval.context_types:
+                name = 'h_{}_term_sims_layer_{}'.format(context_type, layer_id)
+                self.h_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # misc placeholder
         self.train_pp_summary = tf.placeholder(tf.float32)

@@ -26,10 +26,11 @@ def write_h_summaries(hub, graph, sess, data_mb, summary_writer):
             h = graph.hs[layer_id]
         except IndexError:
             continue
-        h_term_sims = calc_h_term_sims(hub, graph, sess, h)
-        name = 'h_term_sims_layer_{}'.format(layer_id)
-        placeholder = graph.h_name2placeholder[name]
-        h_feed_dict[placeholder] = h_term_sims[np.triu_indices(len(h_term_sims), k=1)]
+        for context_type in config.Eval.context_types:
+            h_term_sims = calc_h_term_sims(hub, context_type, graph, sess, h)
+            name = 'h_{}_term_sims_layer_{}'.format(context_type, layer_id)
+            placeholder = graph.h_name2placeholder[name]
+            h_feed_dict[placeholder] = h_term_sims[np.triu_indices(len(h_term_sims), k=1)]
     summary = sess.run(graph.h_summaries, feed_dict=h_feed_dict)
     summary_writer.add_summary(summary, data_mb)
 
@@ -44,12 +45,13 @@ def write_cluster_summaries(hub, graph, sess, data_mb, summary_writer):
             continue
         for hub_mode in config.Eval.hub_modes:
             hub.switch_mode(hub_mode)
-            probe_prototype_acts_mat = make_probe_prototype_acts_mat(hub, 'ordered', graph, sess, h)
-            probe_sims = cosine_similarity(probe_prototype_acts_mat)
-            for cluster_metric in config.Eval.cluster_metrics:
-                name = '{}_{}_layer_{}'.format(hub_mode, cluster_metric, layer_id)
-                placeholder = graph.cluster_name2placeholder[name]
-                cluster_feed_dict[placeholder] = calc_cluster_score(hub, probe_sims, cluster_metric)
+            for context_type in config.Eval.context_types:
+                probe_prototype_acts_mat = make_probe_prototype_acts_mat(hub, context_type, graph, sess, h)
+                probe_sims = cosine_similarity(probe_prototype_acts_mat)
+                for cluster_metric in config.Eval.cluster_metrics:
+                    name = '{}_{}_{}_layer_{}'.format(hub_mode, context_type, cluster_metric, layer_id)
+                    placeholder = graph.cluster_name2placeholder[name]
+                    cluster_feed_dict[placeholder] = calc_cluster_score(hub, probe_sims, cluster_metric)
     summary = sess.run(graph.cluster_summaries, feed_dict=cluster_feed_dict)
     summary_writer.add_summary(summary, data_mb)
 

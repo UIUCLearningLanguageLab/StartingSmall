@@ -5,38 +5,13 @@ from functools import partial
 from sklearn.metrics.pairwise import cosine_similarity
 
 from starting_small import config
+from starting_small.evalutils import sample_from_iterable
 
 
 def check_nans(mat, name='mat'):
     if np.any(np.isnan(mat)):
         num_nans = np.sum(np.isnan(mat))
         print('Found {} Nans in {}'.format(num_nans, name), 'red')
-
-
-def make_probe_prototype_acts_mat(hub, context_type, graph, sess, h):
-    print('Making "{}" "{}" probe prototype activations...'.format(hub.mode, context_type))
-    probe_prototype_acts = []
-    for n, probe_x_mat in enumerate(hub.probe_x_mats):
-        # x
-        if context_type == 'none':
-            x = probe_x_mat[:, -1][:, np.newaxis]
-        elif context_type == 'ordered':
-            x = probe_x_mat
-        elif context_type == 'x':
-            x = probe_x_mat[:, :-1]
-        elif context_type == 'last':
-            x = probe_x_mat[:, -2][:, np.newaxis]
-        elif context_type == 'shuffled':
-            x_no_probe = probe_x_mat[:, np.random.permutation(np.arange(probe_x_mat.shape[1] - 1))]
-            x = np.hstack((x_no_probe, np.expand_dims(probe_x_mat[:, -1], axis=1)))
-        else:
-            raise AttributeError('starting_small: Invalid arg to "context_type".')
-        # probe_act
-        probe_exemplar_acts_mat = sess.run(h, feed_dict={graph.x: x})
-        probe_prototype_act = np.mean(probe_exemplar_acts_mat, axis=0)
-        probe_prototype_acts.append(probe_prototype_act)
-    res = np.vstack(probe_prototype_acts)
-    return res
 
 
 def make_gold(hub):
@@ -73,7 +48,13 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
     labels = gold_mat[np.triu_indices(len(gold_mat), k=1)]
     calc_signals_partial = partial(calc_signals, probe_sims, labels)
 
-    def calc_probes_fs(thr):  # TODO is wrong? - tensorflow shows increasing f1 but this fn only decreases late (with num_iterations=20)
+    def calc_probes_fs(thr):
+        """
+        WARNING: this gives incorrect results at early timepoints (lower compared to tensorflow implementation)
+        # TODO this may be due to using sim_mean as first point to bayesian-opt:
+        # TODO sim mean might not be good init point for f-score (but it is for ba)
+
+        """
         tp, tn, fp, fn = calc_signals_partial(thr)
         precision = np.divide(tp + 1e-7, (tp + fp + 1e-7))
         sensitivity = np.divide(tp + 1e-7, (tp + fn + 1e-7))  # aka recall
@@ -104,7 +85,6 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
 
     # use bayes optimization to find best_thr
     sims_mean = np.mean(probe_sims).item()
-    print('Finding best threshold using bayesian-optimization...')
     gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}
     if cluster_metric == 'f1':
         fun = calc_probes_fs
@@ -113,11 +93,11 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
     elif cluster_metric == 'ck':
         fun = calc_probes_ck
     else:
-        raise AttributeError('rnnlab: Invalid arg to "metric".')
+        raise AttributeError('rnnlab: Invalid arg to "cluster_metric".')
     bo = BayesianOptimization(fun, {'thr': (0.0, 1.0)}, verbose=False)
     bo.explore(
-        {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
-    bo.maximize(init_points=2, n_iter=config.Eval.num_opt_steps,
+        {'thr': [0.99, sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
+    bo.maximize(init_points=config.Eval.num_opt_init_steps, n_iter=config.Eval.num_opt_steps,
                 acq="poi", xi=0.01, **gp_params)  # smaller xi: exploitation
     best_thr = bo.res['max']['max_params']['thr']
     # use best_thr
@@ -126,18 +106,51 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
     return res
 
 
-def calc_h_term_sims(hub, graph, sess, h):
-    print('Making h_term_sims...')
+def adjust_context(mat, context_type):
+    if context_type == 'none':
+        x = mat[:, -1][:, np.newaxis]
+    elif context_type == 'ordered':
+        x = mat
+    elif context_type == 'x':
+        x = mat[:, :-1]
+    elif context_type == 'last':
+        x = mat[:, -2][:, np.newaxis]
+    elif context_type == 'shuffled':
+        x_no_probe = mat[:, np.random.permutation(np.arange(mat.shape[1] - 1))]
+        x = np.hstack((x_no_probe, np.expand_dims(mat[:, -1], axis=1)))
+    else:
+        raise AttributeError('starting_small: Invalid arg to "context_type".')
+    return x
+
+
+def make_probe_prototype_acts_mat(hub, context_type, graph, sess, h):
+    print('Making "{}" "{}" probe prototype activations...'.format(hub.mode, context_type))
+    res = np.zeros((hub.probe_store.num_probes, hub.params.embed_size))
+    for n, probe_x_mat in enumerate(hub.probe_x_mats):
+        x = adjust_context(probe_x_mat, context_type)
+        # probe_act
+        probe_exemplar_acts_mat = sess.run(h, feed_dict={graph.x: x})
+        probe_prototype_act = np.mean(probe_exemplar_acts_mat, axis=0)
+        res[n] = probe_prototype_act
+    return res
+
+
+def calc_h_term_sims(hub, context_type, graph, sess, h):
+    print('Making "{}" "{}" h_term_sims...'.format(hub.mode, context_type))
     term_h_acts_sum = np.zeros((hub.params.num_types, hub.params.embed_size))
     # collect acts
-    pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
-    for (x, y) in hub.gen_ids(num_iterations=1):
-        pbar.update()
+    # pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
+    pbar = pyprind.ProgBar(config.Eval.num_h_samples)
+    num_samples = 0
+    for (x, y) in sample_from_iterable(hub.gen_ids(num_iterations=1), config.Eval.num_h_samples):
+        x = adjust_context(x, context_type)  # TODO test here (works in make_probe_prototype_acts_mat)
         acts_mat = sess.run(h, feed_dict={graph.x: x, graph.y: y})
         # update term_h_acts_sum
         last_term_ids = [term_id for term_id in x[:, -1]]
         for term_id, acts in zip(last_term_ids, acts_mat):
             term_h_acts_sum[term_id] += acts
+        num_samples += 1
+        pbar.update()
     # term_h_acts
     term_h_acts = np.zeros_like(term_h_acts_sum)
     for term, term_id in hub.train_terms.term_id_dict.items():

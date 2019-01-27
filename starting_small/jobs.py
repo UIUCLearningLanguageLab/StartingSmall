@@ -35,16 +35,18 @@ def rnn_job(param2val):
                 return tmb
 
     def evaluate(h, g, s, sw, dmb):
-        if config.Eval.summarize_misc:
-            write_misc_summaries(h, g, s, dmb, sw)
-        if config.Eval.summarize_h:
-            write_h_summaries(h, g, s, dmb, sw)
-        write_cluster2_summaries(h, g, s, dmb, sw)
+        write_misc_summaries(h, g, s, dmb, sw) if config.Eval.summarize_misc else None
+        print('-')
+        write_h_summaries(h, g, s, dmb, sw) if config.Eval.summarize_h else None
+        print('-')
         write_cluster_summaries(h, g, s, dmb, sw)
+        print('-')
+        write_cluster2_summaries(h, g, s, dmb, sw)
+        print('-')
         write_pr_summaries(h, g, s, dmb, sw)
+        print('-')
 
-        # TODO separate term_sims by POS (use hub POS information) and write to tensorboard (e.g. noun_sims, verb_sims)
-
+        # TODO separate h_summaries by POS (use hub POS information) (e.g. noun_sims, verb_sims)
 
     def make_reinit_timepoints(params):
         if params.reinit.split('_')[0] == 'all':
