@@ -2,6 +2,7 @@ import spacy
 import tensorflow as tf
 import math
 import numpy as np
+from tensorboard.plugins.pr_curve.summary import op as pr_curve_op
 
 from starting_small import config
 from starting_small.graphutils import DirectLSTMCell
@@ -23,21 +24,31 @@ class DirectGraph:
         self.x = tf.placeholder(tf.int32, [None, None])
         self.y = tf.placeholder(tf.int32, [None, None])
 
+        # cluster placeholders
         self.cluster_name2placeholder = {}
         for layer_id in range(self.params.num_layers):
             for cluster_metric in config.Eval.cluster_metrics:
-                for hub_mode in config.Eval.cluster_metrics:
+                for hub_mode in config.Eval.hub_modes:
                     name = '{}_{}_layer_{}'.format(hub_mode, cluster_metric, layer_id)
                     self.cluster_name2placeholder[name] = tf.placeholder(tf.float32)
 
+        # h placeholders
         self.h_name2placeholder = {}
-        for layer_id in range(self.params.num_layers):  # TODO test
+        for layer_id in range(self.params.num_layers):
             name = 'term_sims_layer_{}'.format(layer_id)
             self.h_name2placeholder[name] = tf.placeholder(tf.float32)
 
+        # misc placeholder
         self.train_pp_summary = tf.placeholder(tf.float32)
         self.test_pp_summary = tf.placeholder(tf.float32)
         self.wx_term_sims_summary = tf.placeholder(tf.float32)
+
+        # precision + recall placeholders
+        self.pr_name2placeholders = {}
+        for layer_id in range(self.params.num_layers):
+            for hub_mode in config.Eval.hub_modes:
+                name = '{}_pr_layer_{}'.format(hub_mode, layer_id)
+                self.pr_name2placeholders[name] = [tf.placeholder(t) for t in [tf.bool, tf.float32]]
 
         # weights
         with tf.device('/cpu:0'):  # embedding op works on cpu only
@@ -96,8 +107,6 @@ class DirectGraph:
             self.pred_ys = tf.argmax(self.softmax_probs, axis=1)
             self.pps = tf.exp(loss)
             self.mean_pp = tf.exp(tf.reduce_mean(loss))  # used too calc test docs pp
-            self.h0 = hs[0]
-            self.h1 = hs[1] if params.num_layers == 2 else hs[0]
             self.wy = wy
             self.wx = wx
             self.hs = hs
@@ -112,20 +121,31 @@ class DirectGraph:
                 self.wh_adagrad, self.bh_adagrad = self.wh, self.bh  # TODO quick fix
 
         # tensorboard
-        with tf.device('cpu'):
+        with tf.device('/cpu:0'):
             self.misc_summaries = tf.summary.merge([
                 tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
                 tf.summary.scalar('train_pp', self.train_pp_summary),
                 tf.summary.scalar('test_pp', self.test_pp_summary),
             ])
             self.h_summaries = tf.summary.merge(
-                [tf.summary.scalar(k, v) for k, v in self.h_name2placeholder.items()])
+                [tf.summary.histogram(k, v) for k, v in self.h_name2placeholder.items()])
+
+            # TODO use tf.contrib.metric to calc f1 score or precision and recall separately
+            d = {}
             self.cluster_summaries = tf.summary.merge(
-                [tf.summary.scalar(k, v) for k, v in self.cluster_name2placeholder.items()])
+                [tf.summary.scalar(k, v) for k, v in self.cluster_name2placeholder.items()] +
+                [tf.summary.scalar('f1-tf_{}'.format(name), f1) for name, f1 in d.items()])
+            #
+            self.pr_summaries = tf.summary.merge(
+                [pr_curve_op(
+                    name=name + '_summary',
+                    labels=labels,
+                    predictions=predictions,
+                    num_thresholds=config.Eval.num_pr_thresholds)
+                    for name, (labels, predictions) in self.pr_name2placeholders.items()])
 
             # do this every batch
             self.mean_pp_summary = tf.summary.scalar('mean_pp', self.mean_pp)
-
 
     @property
     def cell(self):

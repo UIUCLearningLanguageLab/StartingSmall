@@ -16,12 +16,16 @@ class Dirs:
 
 
 class Eval:
-    skip_term_sims = False
-    skip_pp = True
+    summarize_misc = False
+    summarize_h = False
+    summarize_pp = True
     verbose_opt = True
     num_opt_steps = 10  # 10
-    hub_modes = ['sem', 'syn']
-    cluster_metrics = ['ba', 'f1', 'ck']
+    hub_modes = ['sem']
+    # hub_modes = ['sem', 'syn']
+    cluster_metrics = ['f1']
+    # cluster_metrics = ['ba', 'f1', 'ck']
+    num_pr_thresholds = 10001
 
 
 class Graph:

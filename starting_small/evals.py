@@ -39,9 +39,7 @@ def make_probe_prototype_acts_mat(hub, context_type, graph, sess, h):
     return res
 
 
-def calc_cluster_score(hub, probe_sims, cluster_metric):
-    print('Computing {} score...'.format(cluster_metric))
-    # make gold (signal detection masks)
+def make_gold(hub):
     num_rows = hub.probe_store.num_probes
     num_cols = hub.probe_store.num_probes
     res = np.zeros((num_rows, num_cols))
@@ -51,7 +49,11 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
             probe2 = hub.probe_store.types[j]
             if hub.probe_store.probe_cat_dict[probe1] == hub.probe_store.probe_cat_dict[probe2]:
                 res[i, j] = 1
-    gold = res.astype(np.bool)
+    return res.astype(np.bool)
+
+
+def calc_cluster_score(hub, probe_sims, cluster_metric):
+    print('Computing {} score...'.format(cluster_metric))
 
     def calc_signals(probe_sims, gold, thr):  # vectorized algorithm is 20X faster
         predicted = np.zeros_like(probe_sims, int)
@@ -62,12 +64,13 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
         fn = float(len(np.where((predicted != gold) & (gold == 1))[0]))
         return tp, tn, fp, fn
 
-    def calc_probes_fs(thr):
+    def calc_probes_fs(thr):  # TODO is wrong - tensorflow shows increasing f1 but this never does
         tp, tn, fp, fn = calc_signals(thr)
-        precision = np.divide(tp + 1e-10, (tp + fp + 1e-10))
-        sensitivity = np.divide(tp + 1e-10, (tp + fn + 1e-10))  # aka recall
-        fs = 2 * (precision * sensitivity) / (precision + sensitivity)
-        print('prec={:.2f} sens={:.2f}, | tp={} tn={} | fp={} fn={}'.format(precision, sensitivity, tp, tn, fp, fn))
+        precision = np.divide(tp, (tp + fp))
+        sensitivity = np.divide(tp, (tp + fn))  # aka recall
+
+        fs = 2.0 * precision * sensitivity / max(precision + sensitivity, 1e-7)  # TODO test
+
         return fs
 
     def calc_probes_ck(thr):
@@ -92,10 +95,10 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
         ba = (sensitivity + specificity) / 2  # balanced accuracy
         return ba
 
-    # sims
+    # use bayes optimization to find best_thr
+    gold = make_gold(hub)
     calc_signals = partial(calc_signals, probe_sims, gold)
     sims_mean = np.mean(probe_sims).item()
-    # use bayes optimization to find best_thr
     print('Finding best threshold using bayesian-optimization...')
     gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}
     if cluster_metric == 'f1':

@@ -10,7 +10,10 @@ from childeshub.hub import Hub
 from starting_small import config
 from starting_small.directgraph import DirectGraph
 from starting_small.params import ObjectView
-from starting_small.summaries import write_misc_summaries, write_h_summaries, write_cluster_summaries
+from starting_small.summaries import write_misc_summaries
+from starting_small.summaries import write_h_summaries
+from starting_small.summaries import write_cluster_summaries
+from starting_small.summaries import write_pr_summaries
 
 
 def rnn_job(param2val):
@@ -20,21 +23,25 @@ def rnn_job(param2val):
         for x, y in train_mb_generator:
             pbar.update()
             # train step
-            mean_pp_summary, _ = sess.run([graph.mean_pp_summary, graph.train_step], feed_dict={graph.x: x, graph.y: y})
-
-            # TODO when data_mb corresponds to timepoint, is mean_pp summary written twice?
-            # summary_writer.add_summary(mean_pp_summary, data_mb)
-
+            if config.Eval.summarize_pp:
+                mean_pp_summary, _ = sess.run([graph.mean_pp_summary, graph.train_step],
+                                              feed_dict={graph.x: x, graph.y: y})
+                summary_writer.add_summary(mean_pp_summary, train_mb)
+            else:
+                sess.run(graph.train_step, feed_dict={graph.x: x, graph.y: y})
             train_mb += 1  # has to be like this, because enumerate() resets
             if data_mb == train_mb:
                 return train_mb
 
     def evaluate(hub, graph, sess, summary_writer, data_mb):
-        write_misc_summaries(hub, graph, sess, data_mb, summary_writer)
-        write_h_summaries(hub, graph, sess, data_mb, summary_writer)
+        if config.Eval.summarize_misc:
+            write_misc_summaries(hub, graph, sess, data_mb, summary_writer)
+        if config.Eval.summarize_h:
+            write_h_summaries(hub, graph, sess, data_mb, summary_writer)
+        write_pr_summaries(hub, graph, sess, data_mb, summary_writer)
         write_cluster_summaries(hub, graph, sess, data_mb, summary_writer)
 
-        # TODO separate term_sims by POS (use hub POS information) and write to tensorboard
+        # TODO separate term_sims by POS (use hub POS information) and write to tensorboard (e.g. noun_sims, verb_sims)
 
 
     def make_reinit_timepoints(params):
