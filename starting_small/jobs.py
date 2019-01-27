@@ -13,33 +13,35 @@ from starting_small.params import ObjectView
 from starting_small.summaries import write_misc_summaries
 from starting_small.summaries import write_h_summaries
 from starting_small.summaries import write_cluster_summaries
+from starting_small.summaries import write_cluster2_summaries
 from starting_small.summaries import write_pr_summaries
 
 
 def rnn_job(param2val):
-    def train_on_corpus(data_mb, train_mb, train_mb_generator, graph, sess):
-        print('Training on items from mb {:,} to mb {:,}...'.format(train_mb, data_mb))
-        pbar = pyprind.ProgBar(data_mb - train_mb)
-        for x, y in train_mb_generator:
+    def train_on_corpus(dmb, tmb, tmbg, g, s):
+        print('Training on items from mb {:,} to mb {:,}...'.format(tmb, dmb))
+        pbar = pyprind.ProgBar(dmb - tmb)
+        for x, y in tmbg:
             pbar.update()
             # train step
-            if config.Eval.summarize_pp:
-                mean_pp_summary, _ = sess.run([graph.mean_pp_summary, graph.train_step],
-                                              feed_dict={graph.x: x, graph.y: y})
-                summary_writer.add_summary(mean_pp_summary, train_mb)
+            if config.Eval.summarize_train_pp:
+                mean_pp_summary, _ = s.run([g.mean_pp_summary, g.train_step],
+                                           feed_dict={g.x: x, g.y: y})
+                summary_writer.add_summary(mean_pp_summary, tmb)
             else:
-                sess.run(graph.train_step, feed_dict={graph.x: x, graph.y: y})
-            train_mb += 1  # has to be like this, because enumerate() resets
-            if data_mb == train_mb:
-                return train_mb
+                s.run(g.train_step, feed_dict={g.x: x, g.y: y})
+            tmb += 1  # has to be like this, because enumerate() resets
+            if dmb == tmb:
+                return tmb
 
-    def evaluate(hub, graph, sess, summary_writer, data_mb):
+    def evaluate(h, g, s, sw, dmb):
         if config.Eval.summarize_misc:
-            write_misc_summaries(hub, graph, sess, data_mb, summary_writer)
+            write_misc_summaries(h, g, s, dmb, sw)
         if config.Eval.summarize_h:
-            write_h_summaries(hub, graph, sess, data_mb, summary_writer)
-        write_pr_summaries(hub, graph, sess, data_mb, summary_writer)
-        write_cluster_summaries(hub, graph, sess, data_mb, summary_writer)
+            write_h_summaries(h, g, s, dmb, sw)
+        write_cluster2_summaries(h, g, s, dmb, sw)
+        write_cluster_summaries(h, g, s, dmb, sw)
+        write_pr_summaries(h, g, s, dmb, sw)
 
         # TODO separate term_sims by POS (use hub POS information) and write to tensorboard (e.g. noun_sims, verb_sims)
 
@@ -53,42 +55,42 @@ def rnn_job(param2val):
             raise AttributeError('starting_small: Invalid arg to "reinit".')
         return result
 
-    def reinit_weights(graph, sess, params):
-        print('Reinitializing with reinit={}'.format(params.reinit))
-        wh = graph.wh.eval(session=sess)
-        bh = graph.bh.eval(session=sess)
-        wh_adagrad = graph.wh_adagrad.eval(session=sess)
-        bh_adagrad = graph.bh_adagrad.eval(session=sess)
-        reinit_prob = float(params.reinit.split('_')[1]) / 100
+    def reinit_weights(g, s, ps):
+        print('Reinitializing with reinit={}'.format(ps.reinit))
+        wh = g.wh.eval(session=s)
+        bh = g.bh.eval(session=s)
+        wh_adagrad = g.wh_adagrad.eval(session=s)
+        bh_adagrad = g.bh_adagrad.eval(session=s)
+        reinit_prob = float(ps.reinit.split('_')[1]) / 100
         reinits_b = np.random.normal(loc=0.0, scale=0.01, size=bh.shape)
         reinits_w = np.random.normal(loc=0.0, scale=0.01, size=wh.shape)
         reinits_a = np.zeros_like(wh_adagrad)  # TODO test
         flag_w = bernoulli.rvs(p=reinit_prob, size=wh.shape)
         flag_b = bernoulli.rvs(p=reinit_prob, size=bh.shape)
-        if params.reinit.split('_')[2] == 'w':
+        if ps.reinit.split('_')[2] == 'w':
             wh[flag_w == 1] = reinits_w[flag_w == 1]
-        elif params.reinit.split('_')[2] == 'a':
+        elif ps.reinit.split('_')[2] == 'a':
             wh_adagrad[flag_w == 1] = reinits_a[flag_w == 1]
-        elif params.reinit.split('_')[2] == 'w+a':
+        elif ps.reinit.split('_')[2] == 'w+a':
             wh[flag_w == 1] = reinits_w[flag_w == 1]
             wh_adagrad[flag_w == 1] = reinits_a[flag_w == 1]
-        elif params.reinit.split('_')[2] == 'b':
+        elif ps.reinit.split('_')[2] == 'b':
             bh[flag_b == 1] = reinits_b[flag_b == 1]
-        elif params.reinit.split('_')[2] == 'w+b':
+        elif ps.reinit.split('_')[2] == 'w+b':
             wh[flag_w == 1] = reinits_w[flag_w == 1]
             bh[flag_w == 1] = reinits_b[flag_b == 1]
         else:
             raise AttributeError('starting_small: Invalid arg to "reinit".')
-        graph.wh.load_params_d(wh, session=sess)
-        graph.bh.load_params_d(bh, session=sess)
-        graph.wh_adagrad.load_params_d(wh_adagrad, session=sess)
-        graph.bh_adagrad.load_params_d(bh_adagrad, session=sess)
+        g.wh.load_params_d(wh, session=s)
+        g.bh.load_params_d(bh, session=s)
+        g.wh_adagrad.load_params_d(wh_adagrad, session=s)
+        g.bh_adagrad.load_params_d(bh_adagrad, session=s)
 
     params = ObjectView(param2val)
     params.num_y = 1
     hub = Hub(params=params)
-    g = tf.Graph()
-    with g.as_default():
+    tf_graph = tf.Graph()
+    with tf_graph.as_default():
         # tensorflow + tensorboard
         graph = DirectGraph(params, hub)
         tb_p = config.Dirs.tensorboard / param2val['job_name']

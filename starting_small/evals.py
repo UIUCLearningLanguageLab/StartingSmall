@@ -55,29 +55,36 @@ def make_gold(hub):
 def calc_cluster_score(hub, probe_sims, cluster_metric):
     print('Computing {} score...'.format(cluster_metric))
 
-    def calc_signals(probe_sims, gold, thr):  # vectorized algorithm is 20X faster
-        predicted = np.zeros_like(probe_sims, int)
-        predicted[np.where(probe_sims > thr)] = 1
-        tp = float(len(np.where((predicted == gold) & (gold == 1))[0]))
-        tn = float(len(np.where((predicted == gold) & (gold == 0))[0]))
-        fp = float(len(np.where((predicted != gold) & (gold == 0))[0]))
-        fn = float(len(np.where((predicted != gold) & (gold == 1))[0]))
+    def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
+        probe_sims_clipped = np.clip(_probe_sims, 0, 1)
+        probe_sims_clipped_triu = probe_sims_clipped[np.triu_indices(len(probe_sims_clipped), k=1)]
+        predictions = np.zeros_like(probe_sims_clipped_triu, int)
+        predictions[np.where(probe_sims_clipped_triu > thr)] = 1
+        #
+        tp = float(len(np.where((predictions == _labels) & (_labels == 1))[0]))
+        tn = float(len(np.where((predictions == _labels) & (_labels == 0))[0]))
+        fp = float(len(np.where((predictions != _labels) & (_labels == 0))[0]))
+        fn = float(len(np.where((predictions != _labels) & (_labels == 1))[0]))
         return tp, tn, fp, fn
 
-    def calc_probes_fs(thr):  # TODO is wrong - tensorflow shows increasing f1 but this fn never does
-        tp, tn, fp, fn = calc_signals(thr)
-        precision = np.divide(tp, (tp + fp))
-        sensitivity = np.divide(tp, (tp + fn))  # aka recall
+    # define calc_signals_partial
+    check_nans(probe_sims, name='probe_sims')
+    gold_mat = make_gold(hub)
+    labels = gold_mat[np.triu_indices(len(gold_mat), k=1)]
+    calc_signals_partial = partial(calc_signals, probe_sims, labels)
 
+    def calc_probes_fs(thr):  # TODO is wrong? - tensorflow shows increasing f1 but this fn only decreases late (with num_iterations=20)
+        tp, tn, fp, fn = calc_signals_partial(thr)
+        precision = np.divide(tp + 1e-7, (tp + fp + 1e-7))
+        sensitivity = np.divide(tp + 1e-7, (tp + fn + 1e-7))  # aka recall
         fs = 2.0 * precision * sensitivity / max(precision + sensitivity, 1e-7)
-
         return fs
 
     def calc_probes_ck(thr):
         """
         cohen's kappa
         """
-        tp, tn, fp, fn = calc_signals(thr)
+        tp, tn, fp, fn = calc_signals_partial(thr)
         totA = np.divide(tp + tn, (tp + tn + fp + fn))
         #
         pyes = ((tp + fp) / (tp + fp + tn + fn)) * ((tp + fn) / (tp + fp + tn + fn))
@@ -89,15 +96,13 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
         return ck
 
     def calc_probes_ba(thr):
-        tp, tn, fp, fn = calc_signals(thr)
-        specificity = np.divide(tn + 1e-10, (tn + fp + 1e-10))
-        sensitivity = np.divide(tp + 1e-10, (tp + fn + 1e-10))  # aka recall
+        tp, tn, fp, fn = calc_signals_partial(thr)
+        specificity = np.divide(tn + 1e-7, (tn + fp + 1e-7))
+        sensitivity = np.divide(tp + 1e-7, (tp + fn + 1e-7))  # aka recall
         ba = (sensitivity + specificity) / 2  # balanced accuracy
         return ba
 
     # use bayes optimization to find best_thr
-    gold = make_gold(hub)
-    calc_signals = partial(calc_signals, probe_sims, gold)
     sims_mean = np.mean(probe_sims).item()
     print('Finding best threshold using bayesian-optimization...')
     gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}

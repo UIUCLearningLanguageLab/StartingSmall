@@ -32,10 +32,20 @@ class DirectGraph:
                     name = '{}_{}_layer_{}'.format(hub_mode, cluster_metric, layer_id)
                     self.cluster_name2placeholder[name] = tf.placeholder(tf.float32)
 
+        # cluster2 placeholders
+        with tf.device('/cpu:0'):  # f1 only works on cpu
+            self.cluster2_name2placeholder = {}
+            for layer_id in range(self.params.num_layers):
+                for hub_mode in config.Eval.hub_modes:
+                    name = '{}_tf-f1_labels_layer_{}'.format(hub_mode, layer_id)
+                    self.cluster2_name2placeholder[name] = tf.placeholder(tf.bool)
+                    name = '{}_tf-f1_predictions_layer_{}'.format(hub_mode, layer_id)
+                    self.cluster2_name2placeholder[name] = tf.placeholder(tf.float32)
+
         # h placeholders
         self.h_name2placeholder = {}
         for layer_id in range(self.params.num_layers):
-            name = 'term_sims_layer_{}'.format(layer_id)
+            name = 'h_term_sims_layer_{}'.format(layer_id)
             self.h_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # misc placeholder
@@ -122,19 +132,41 @@ class DirectGraph:
 
         # tensorboard
         with tf.device('/cpu:0'):
-            self.misc_summaries = tf.summary.merge([
-                tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
-                tf.summary.scalar('test_pp', self.test_pp_summary),
-            ])
+
+            # cluster2 computations
+            self.cluster2_name2f1_update = {}
+            self.cluster2_name2f1 = {}
+            self.cluster2_name2initializer = {}
+            for layer_id in range(self.params.num_layers):
+                for hub_mode in config.Eval.hub_modes:
+                    # ops
+                    f1, f1_update = tf.contrib.metrics.f1_score(
+                        name='{}_tf-f1-metric_layer_{}'.format(hub_mode, layer_id),
+                        labels=self.cluster2_name2placeholder[
+                            '{}_tf-f1_labels_layer_{}'.format(hub_mode, layer_id)],
+                        predictions=self.cluster2_name2placeholder[
+                            '{}_tf-f1_predictions_layer_{}'.format(hub_mode, layer_id)],
+                        num_thresholds=config.Eval.num_pr_thresholds)
+                    name = '{}_tf-f1_layer_{}'.format(hub_mode, layer_id)
+                    self.cluster2_name2f1_update[name] = f1_update
+                    self.cluster2_name2f1[name] = f1
+                    # save ops + running variables to dict
+                    running_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES,
+                                                     scope='{}_tf-f1-metric_layer_{}'.format(hub_mode, layer_id))
+                    running_vars_initializer = tf.variables_initializer(var_list=running_vars)
+                    self.cluster2_name2initializer[name] = running_vars_initializer
+
+            # summaries
+            self.misc_summaries = tf.summary.merge(
+                [tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
+                 tf.summary.scalar('test_pp', self.test_pp_summary)])
             self.h_summaries = tf.summary.merge(
                 [tf.summary.histogram(k, v) for k, v in self.h_name2placeholder.items()])
-
-            # TODO use tf.contrib.metric to calc f1 score or precision and recall separately
-            d = {}
             self.cluster_summaries = tf.summary.merge(
-                [tf.summary.scalar(k, v) for k, v in self.cluster_name2placeholder.items()] +
-                [tf.summary.scalar('f1-tf_{}'.format(name), f1) for name, f1 in d.items()])
-            #
+                [tf.summary.scalar(k, v) for k, v in self.cluster_name2placeholder.items()])
+            self.cluster2_summaries = tf.summary.merge(
+                [tf.summary.scalar(name + '_summary', f1)
+                 for name, f1 in self.cluster2_name2f1.items()])
             self.pr_summaries = tf.summary.merge(
                 [pr_curve_op(
                     name=name + '_summary',
