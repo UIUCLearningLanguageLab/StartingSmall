@@ -18,6 +18,7 @@ from starting_small.summaries import write_cluster2_summaries
 from starting_small.summaries import write_pr_summaries
 
 
+# noinspection PyTypeChecker
 def rnn_job(param2val):
     def train_on_corpus(dmb, tmb, tmbg, g, s):
         print('Training on items from mb {:,} to mb {:,}...'.format(tmb, dmb))
@@ -92,12 +93,9 @@ def rnn_job(param2val):
     with tf_graph.as_default():
         # tensorflow + tensorboard
         graph = DirectGraph(params, hub)
-        tb_p = config.Dirs.tensorboard / param2val['job_name']
+        tb_p = config.Dirs.runs / param2val['param_name'] / param2val['job_name']  # TODO test
         if not tb_p.exists():
             tb_p.mkdir(parents=True)
-        else:
-            for p in tb_p.iterdir():
-                p.unlink()  # clear previous data
         sess = tf.Session()
         summary_writer = tf.summary.FileWriter(tb_p, sess.graph)
         sess.run(tf.global_variables_initializer())
@@ -116,7 +114,7 @@ def rnn_job(param2val):
             print('Completed Timepoint: {}/{} |Elapsed: {:>2} mins\n'.format(
                 timepoint, hub.params.num_saves, int(float(time.time() - start_train) / 60)))
             # reinitialize recurrent weights
-            if params.reinit is not None:
+            if params.reinit is not None:  # pylint: disable inspection
                 if timepoint in make_reinit_timepoints(params):
                     reinit_weights(graph, sess, params)
         sess.close()

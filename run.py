@@ -27,17 +27,11 @@ def run_on_cluster():
     print()
 
 
-def run_on_host():  # parameter to show for each model in tensorboard
+def run_on_host():
     """
     run jobs on the local host for testing/development
     """
     from ludwigcluster.utils import list_all_param2vals
-    # clean tensorboard dir
-    config.Dirs.tensorboard = config.Dirs.root / 'tensorboard'  # loads faster without network connection
-    for p in config.Dirs.tensorboard.rglob('events*'):
-        p.unlink()
-    for p in config.Dirs.tensorboard.iterdir():
-        p.rmdir()
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
         param2val['job_name'] += 'start{}_'.format(param2val['num_iterations_start'])
@@ -51,6 +45,6 @@ if __name__ == '__main__':
     parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)  # TODO set default to False
     namespace = parser.parse_args()
     if namespace.local:
-        run_on_host()  # tensorboard --logdir=/home/ph/StartingSmall/tensorboard
+        run_on_host()
     else:
         run_on_cluster()

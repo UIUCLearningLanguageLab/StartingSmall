@@ -1,7 +1,7 @@
 
 
 class ObjectView(object):
-    def __init__(self, d):
+    def __init__(self, d: object):
         self.__dict__ = d
 
 
@@ -15,7 +15,7 @@ class Params:
     num_iterations_end = [20, 30, 10]  # default: 20
     reinit = [None]
     # reinit = [None, 'all_10_w', 'all_10_a', 'all_90_w', 'all_90_a']  # w=weights, a=adagrad b=bias
-    num_saves = [5]
+    num_saves = [20]
     bptt_steps = [7]  # default: 7
     num_layers = [1]  # default: 1
     mb_size = [64]
