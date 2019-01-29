@@ -125,6 +125,12 @@ def adjust_context(mat, context_type):
 
 def make_probe_prototype_acts_mat(hub, context_type, graph, sess, h):
     print('Making "{}" "{}" probe prototype activations...'.format(hub.mode, context_type))
+
+    # TODO debug
+    for k, v in hub.params.__dict__.items():
+        print(k, v)
+
+
     res = np.zeros((hub.probe_store.num_probes, hub.params.embed_size))
     for n, probe_x_mat in enumerate(hub.probe_x_mats):
         x = adjust_context(probe_x_mat, context_type)
@@ -142,7 +148,8 @@ def calc_h_term_sims(hub, context_type, graph, sess, h):
     # pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
     pbar = pyprind.ProgBar(config.Eval.num_h_samples)
     num_samples = 0
-    for (x, y) in sample_from_iterable(hub.gen_ids(num_iterations=1), config.Eval.num_h_samples):
+    num_iterations_list = [1] * hub.params.num_parts
+    for (x, y) in sample_from_iterable(hub.gen_ids(num_iterations_list), config.Eval.num_h_samples):
         x = adjust_context(x, context_type)  # TODO test here (works in make_probe_prototype_acts_mat)
         acts_mat = sess.run(h, feed_dict={graph.x: x, graph.y: y})
         # update term_h_acts_sum

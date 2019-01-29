@@ -1,8 +1,11 @@
 import argparse
 import pickle
 import socket
+import sys
 
 from starting_small import config
+sys.path.append(str(config.Dirs.remote_root))  # import childeshub from there
+
 from starting_small.jobs import rnn_job, backup_job
 from starting_small.params import Params
 
@@ -13,8 +16,6 @@ def run_on_cluster():
     """
     run multiple jobs on multiple LudwigCluster nodes.
     """
-    config.Dirs.corpora = config.Dirs.remote_root / 'corpora'
-    #
     p = config.Dirs.remote_root / '{}_param2val_chunk.pkl'.format(hostname)
     with p.open('rb') as f:
         param2val_chunk = pickle.load(f)
@@ -26,7 +27,7 @@ def run_on_cluster():
     print()
 
 
-def run_on_host(sort_by='part_order'):  # parameter to show for each model in tensorboard
+def run_on_host():  # parameter to show for each model in tensorboard
     """
     run jobs on the local host for testing/development
     """
@@ -39,13 +40,15 @@ def run_on_host(sort_by='part_order'):  # parameter to show for each model in te
         p.rmdir()
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
-        param2val['job_name'] += param2val[sort_by]
+        param2val['job_name'] += 'start{}_'.format(param2val['num_iterations_start'])
+        param2val['job_name'] += 'end{}_'.format(param2val['num_iterations_end'])
+        param2val['job_name'] += 'order{}_'.format(param2val['part_order'])
         rnn_job(param2val)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', default=True, action='store_true', dest='local', required=False)  # TODO set default to False
+    parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)  # TODO set default to False
     namespace = parser.parse_args()
     if namespace.local:
         run_on_host()  # tensorboard --logdir=/home/ph/StartingSmall/tensorboard

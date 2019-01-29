@@ -4,6 +4,7 @@ from scipy.stats import bernoulli
 import numpy as np
 import pyprind
 from shutil import copyfile
+import sys
 
 from childeshub.hub import Hub
 
@@ -36,15 +37,10 @@ def rnn_job(param2val):
 
     def evaluate(h, g, s, sw, dmb):
         write_misc_summaries(h, g, s, dmb, sw) if config.Eval.summarize_misc else None
-        print('-')
         write_h_summaries(h, g, s, dmb, sw) if config.Eval.summarize_h else None
-        print('-')
         write_cluster_summaries(h, g, s, dmb, sw)
-        print('-')
         write_cluster2_summaries(h, g, s, dmb, sw)
-        print('-')
         write_pr_summaries(h, g, s, dmb, sw)
-        print('-')
 
         # TODO separate h_summaries by POS (use hub POS information) (e.g. noun_sims, verb_sims)
 
@@ -91,6 +87,7 @@ def rnn_job(param2val):
     params = ObjectView(param2val)
     params.num_y = 1
     hub = Hub(params=params)
+    sys.stdout.flush()
     tf_graph = tf.Graph()
     with tf_graph.as_default():
         # tensorflow + tensorboard

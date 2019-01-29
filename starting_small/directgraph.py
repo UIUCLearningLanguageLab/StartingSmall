@@ -141,7 +141,7 @@ class DirectGraph:
             self.cluster2_name2initializer = {}
             for layer_id in range(self.params.num_layers):
                 for hub_mode in config.Eval.hub_modes:
-                    # ops
+                    # ops  (f1 calculates f1-score from hidden vars, f1_update updates hidden vars)
                     f1, f1_update = tf.contrib.metrics.f1_score(
                         name='{}_tf-f1-metric_layer_{}'.format(hub_mode, layer_id),
                         labels=self.cluster2_name2placeholder[
@@ -152,7 +152,7 @@ class DirectGraph:
                     name = '{}_tf-f1_layer_{}'.format(hub_mode, layer_id)
                     self.cluster2_name2f1_update[name] = f1_update
                     self.cluster2_name2f1[name] = f1
-                    # save ops + running variables to dict
+                    # save ops + running_vars to dict
                     running_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES,
                                                      scope='{}_tf-f1-metric_layer_{}'.format(hub_mode, layer_id))
                     running_vars_initializer = tf.variables_initializer(var_list=running_vars)
