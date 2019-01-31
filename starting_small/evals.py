@@ -9,30 +9,44 @@ from starting_small import config
 from starting_small.evalutils import sample_from_iterable
 
 
-def calc_within_diff(hub, graph, sess, w_name, cat):  # TODO test
+def calc_diff(hub, graph, sess, w_name, cat, diff_type):
     """
     return ratio of average of pairwise similarities between weights corresponding to "term_ids" and
-    average of pairwise similarities between weights corresponding to random term ids.
-    represents a measure of within-probes differentiation (the higher, the more differentiation)
+    average of pairwise similarities between weights corresponding to "other_term_ids".
+    represents a measure of differentiation (the higher, the more differentiation).
+    when, "diff_type" = "probes", measure indicates differentiation between probe categories.
+    when, "diff_type" = "terms", measure indicates differentiation of probe categories from all other terms.
+    it makes most sense to use "probes" for semantic probes, to measure semantic differentiaton in the noun category.
+
     """
-    term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.cat_probe_list_dict[cat]]
-    np.random.seed(1)
-    random_term_ids = np.random.choice(hub.params.num_types, size=len(term_ids), replace=False)
+    self_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.cat_probe_list_dict[cat]]
+    if diff_type == 'probes':
+        other_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.types]
+    elif diff_type == 'terms':
+        np.random.seed(1)
+        other_term_ids = np.arange(0, hub.params.num_types)
+    else:
+        raise AttributeError('Invalid arg to "diff_type"')
     #
     if w_name == 'wx':
         w = sess.run(graph.wx)
-        w_filtered = w[term_ids, :]
-        w_random = w[random_term_ids, :]
+        w_filtered = w[self_term_ids, :]
+        w_other = w[other_term_ids, :]
     elif w_name == 'wy':
         w = sess.run(graph.wy)
-        w_filtered = w[:, term_ids].T
-        w_random = w[:, random_term_ids].T
+        w_filtered = w[:, self_term_ids].T
+        w_other = w[:, other_term_ids].T
     else:
         raise AttributeError('rnnlab: Invalid arg to "w_name"')
     #
     self_sim = cosine_similarity(w_filtered, w_filtered).mean().mean()
-    random_sim = cosine_similarity(w_random, w_random).mean().mean()
-    result = self_sim / abs(random_sim)
+    other_sim = cosine_similarity(w_other, w_other).mean().mean()
+
+    # TODO does computing this makes sense?
+    print('self_sim, other_sim')
+    print(self_sim, other_sim)
+
+    result = self_sim / abs(other_sim)  # TODO perhaps difference is better? ratio is really high at start
     return result
 
 

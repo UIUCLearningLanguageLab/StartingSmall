@@ -8,24 +8,25 @@ from starting_small.evals import calc_cluster_score
 from starting_small.evals import make_probe_prototype_acts_mat
 from starting_small.evals import calc_pos_map
 from starting_small.evals import make_gold
-from starting_small.evals import calc_within_diff
+from starting_small.evals import calc_diff
 
 
-def write_within_diff_summaries(hub, graph, sess, data_mb, summary_writer):
+def write_diff_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making within_diff_summaries...')
     fd = dict()
-    for w_name in config.Eval.w_names:
-        name = 'within_diff_{}'.format(w_name)
-        placeholder = graph.within_diff_name2placeholder[name]
+    for diff_type in config.Eval.diff_types:
+        for w_name in config.Eval.w_names:
+            name = '{}_diff_{}'.format(diff_type, w_name)
+            placeholder = graph.diff_name2placeholder[name]
 
-        fd[placeholder] = np.array([calc_within_diff(hub, graph, sess, w_name, cat) for cat in hub.probe_store.cats])  # TODO test
+            fd[placeholder] = np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type) for cat in hub.probe_store.cats])  # TODO test
 
-        for cat in hub.probe_store.cats:
-            print(cat)
-            print(np.array([calc_within_diff(hub, graph, sess, w_name, cat)]))
+            for cat in hub.probe_store.cats:
+                print(cat)
+                print(np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type)]))
 
 
-    summary = sess.run(graph.within_diff_summaries, feed_dict=fd)  # TODO should be a distribution summary, showing within_diff score for each cat separately
+    summary = sess.run(graph.diff_summaries, feed_dict=fd)  # TODO should be a distribution summary, showing within_diff score for each cat separately
     summary_writer.add_summary(summary, data_mb)
 
 
