@@ -10,12 +10,11 @@ from starting_small.evals import calc_pos_map
 from starting_small.evals import make_gold
 
 
-def write_ap_summaries(hub, graph, sess, data_mb, summary_writer):  # TODO test
+def write_ap_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making ap_summaries...')
     ap_feed_dict = dict()
-
     for pos in config.Eval.pos_for_map:
-        name = pos
+        name = 'mean_ap_{}'.format(pos)
         placeholder = graph.ap_name2placeholder[name]
         ap_feed_dict[placeholder] = calc_pos_map(hub, graph, sess, pos)
     summary = sess.run(graph.ap_summaries, feed_dict=ap_feed_dict)

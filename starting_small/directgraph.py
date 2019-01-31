@@ -27,7 +27,7 @@ class DirectGraph:
         # AP placeholders
         self.ap_name2placeholder = {}
         for pos in config.Eval.pos_for_map:
-            name = pos
+            name = 'mean_ap_{}'.format(pos)
             self.ap_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # cluster placeholders

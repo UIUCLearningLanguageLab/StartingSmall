@@ -11,7 +11,6 @@ class Dirs:
     remote_root = Path('/media/lab') / 'StartingSmall'
     runs = remote_root / 'runs'
     backup = remote_root / 'backup'
-    tensorboard = remote_root / 'tensorboard'
 
 
 class Eval:
@@ -27,7 +26,7 @@ class Eval:
     num_pr_thresholds = 10001
     num_h_samples = 1000 * 10  # default for CHILDES: 1000 * 10 (1000 * 100 is larger than sample)
 
-    pos_for_map = ['nouns', 'verbs']  # TODO test
+    pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions']  # TODO test
 
 
 class Graph:

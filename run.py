@@ -33,6 +33,7 @@ def run_on_host():
     """
     from ludwigcluster.utils import list_all_param2vals
     #
+    # config.Dirs.runs = config.Dirs.root / 'runs'
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
         param2val['job_name'] += 'start{}_'.format(param2val['num_iterations_start'])
         param2val['job_name'] += 'end{}_'.format(param2val['num_iterations_end'])

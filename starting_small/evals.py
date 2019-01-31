@@ -10,9 +10,8 @@ from starting_small.evalutils import sample_from_iterable
 
 
 def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):
-    # softmax_probs
+    # calc softmax
     cat_terms = getattr(hub, pos)
-    num_cat_terms = len(cat_terms)
     windows_list = [hub.get_term_id_windows(cat_term, num_samples=max_term_windows)
                     for cat_term in cat_terms]
     windows = [window for windows in windows_list for window in windows]
@@ -23,7 +22,7 @@ def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):
     y_pred_mat = sess.run(graph.softmax_probs, feed_dict=feed_dict)
     # score
     cat_term_ids = [hub.train_terms.term_id_dict[term] for term in cat_terms]
-    y_true = np.zeros(num_cat_terms)
+    y_true = np.zeros(hub.params.num_types)
     y_true[cat_term_ids] = 1
     result = np.mean([average_precision_score(y_true, y_pred) for y_pred in y_pred_mat])
     return result
