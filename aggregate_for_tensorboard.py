@@ -4,9 +4,10 @@ from pathlib import Path
 
 
 IS_BACKUP = False
-KEY = 'embed_size'
-VALUE = 512
+KEY = 'num_saves'
+VALUE = 10
 PARAMS_TO_DISPLAY = ['part_order',
+                     'num_parts',
                      'num_iterations_start',
                      'num_iterations_end']
 
@@ -32,7 +33,7 @@ for param_p in runs_p.glob('param_*'):
                 continue
             src = str(job_p)
 
-            new_name = '_'.join(['{}={}'.format(p, param2val[p]) for p in PARAMS_TO_DISPLAY])
+            new_name = '__'.join(['{}={}'.format(p, param2val[p]) for p in PARAMS_TO_DISPLAY])
 
             dst = str(tb_p / new_name)
             print('Moving {} to {}'.format(src, dst))

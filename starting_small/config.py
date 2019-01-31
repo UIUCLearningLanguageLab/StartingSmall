@@ -26,7 +26,7 @@ class Eval:
     num_pr_thresholds = 10001
     num_h_samples = 1000 * 10  # default for CHILDES: 1000 * 10 (1000 * 100 is larger than sample)
 
-    pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions']  # TODO test
+    pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
 
 
 class Graph:
