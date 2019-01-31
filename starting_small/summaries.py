@@ -1,10 +1,25 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-import tensorflow as tf
 
 from starting_small import config
-from starting_small.evals import calc_pp, calc_h_term_sims, calc_cluster_score, make_probe_prototype_acts_mat
+from starting_small.evals import calc_pp
+from starting_small.evals import calc_h_term_sims
+from starting_small.evals import calc_cluster_score
+from starting_small.evals import make_probe_prototype_acts_mat
+from starting_small.evals import calc_pos_map
 from starting_small.evals import make_gold
+
+
+def write_ap_summaries(hub, graph, sess, data_mb, summary_writer):  # TODO test
+    print('Making ap_summaries...')
+    ap_feed_dict = dict()
+
+    for pos in config.Eval.pos_for_map:
+        name = pos
+        placeholder = graph.ap_name2placeholder[name]
+        ap_feed_dict[placeholder] = calc_pos_map(hub, graph, sess, pos)
+    summary = sess.run(graph.ap_summaries, feed_dict=ap_feed_dict)
+    summary_writer.add_summary(summary, data_mb)
 
 
 def write_misc_summaries(hub, graph, sess, data_mb, summary_writer):

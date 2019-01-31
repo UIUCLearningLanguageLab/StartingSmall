@@ -27,6 +27,8 @@ class Eval:
     num_pr_thresholds = 10001
     num_h_samples = 1000 * 10  # default for CHILDES: 1000 * 10 (1000 * 100 is larger than sample)
 
+    pos_for_map = ['nouns', 'verbs']  # TODO test
+
 
 class Graph:
     device = 'gpu'
