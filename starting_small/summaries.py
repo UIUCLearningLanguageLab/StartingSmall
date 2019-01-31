@@ -8,27 +8,47 @@ from starting_small.evals import calc_cluster_score
 from starting_small.evals import make_probe_prototype_acts_mat
 from starting_small.evals import calc_pos_map
 from starting_small.evals import make_gold
+from starting_small.evals import calc_diff
+
+
+def write_diff_summaries(hub, graph, sess, data_mb, summary_writer):
+    print('Making within_diff_summaries...')
+    fd = dict()
+    for diff_type in config.Eval.diff_types:
+        for w_name in config.Eval.w_names:
+            name = '{}_diff_{}'.format(diff_type, w_name)
+            placeholder = graph.diff_name2placeholder[name]
+
+            fd[placeholder] = np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type) for cat in hub.probe_store.cats])  # TODO test
+
+            for cat in hub.probe_store.cats:
+                print(cat)
+                print(np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type)]))
+
+
+    summary = sess.run(graph.diff_summaries, feed_dict=fd)  # TODO should be a distribution summary, showing within_diff score for each cat separately
+    summary_writer.add_summary(summary, data_mb)
 
 
 def write_ap_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making ap_summaries...')
-    ap_feed_dict = dict()
+    fd = dict()
     for pos in config.Eval.pos_for_map:
         name = 'mean_ap_{}'.format(pos)
         placeholder = graph.ap_name2placeholder[name]
-        ap_feed_dict[placeholder] = calc_pos_map(hub, graph, sess, pos)
-    summary = sess.run(graph.ap_summaries, feed_dict=ap_feed_dict)
+        fd[placeholder] = calc_pos_map(hub, graph, sess, pos)
+    summary = sess.run(graph.ap_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 
 def write_misc_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making misc_summaries...')
-    misc_feed_dict = dict()
-    misc_feed_dict[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)  # no need for train_pp
+    fd = dict()
+    fd[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)  # no need for train_pp
     wx_term_acts = sess.run(graph.wx)
     wx_term_sims = cosine_similarity(wx_term_acts)
-    misc_feed_dict[graph.wx_term_sims_summary] = wx_term_sims[np.triu_indices(len(wx_term_sims), k=1)]
-    summary = sess.run(graph.misc_summaries, feed_dict=misc_feed_dict)
+    fd[graph.wx_term_sims_summary] = wx_term_sims[np.triu_indices(len(wx_term_sims), k=1)]
+    summary = sess.run(graph.misc_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 
@@ -51,7 +71,7 @@ def write_h_summaries(hub, graph, sess, data_mb, summary_writer):
 
 def write_cluster_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making cluster_summaries...')
-    cluster_feed_dict = dict()
+    fd = dict()
     for layer_id in range(graph.params.num_layers):
         try:
             h = graph.hs[layer_id]
@@ -65,14 +85,14 @@ def write_cluster_summaries(hub, graph, sess, data_mb, summary_writer):
                 for cluster_metric in config.Eval.cluster_metrics:
                     name = '{}_{}_{}_layer_{}'.format(hub_mode, context_type, cluster_metric, layer_id)
                     placeholder = graph.cluster_name2placeholder[name]
-                    cluster_feed_dict[placeholder] = calc_cluster_score(hub, probe_sims, cluster_metric)
-    summary = sess.run(graph.cluster_summaries, feed_dict=cluster_feed_dict)
+                    fd[placeholder] = calc_cluster_score(hub, probe_sims, cluster_metric)
+    summary = sess.run(graph.cluster_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 
 def write_cluster2_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making cluster2_summaries...')
-    cluster2_feed_dict = dict()
+    fd = dict()
     for layer_id in range(graph.params.num_layers):
         try:
             h = graph.hs[layer_id]
@@ -94,24 +114,24 @@ def write_cluster2_summaries(hub, graph, sess, data_mb, summary_writer):
             probe_sims_clipped = np.clip(probe_sims, 0, 1)
             predictions = probe_sims_clipped[np.triu_indices(len(probe_sims_clipped), k=1)]
             # feed
-            cluster2_feed_dict[labels_placeholder] = labels
-            cluster2_feed_dict[predictions_placeholder] = predictions
+            fd[labels_placeholder] = labels
+            fd[predictions_placeholder] = predictions
             # update hidden/running variables
             name = '{}_tf-f1_layer_{}'.format(hub_mode, layer_id)
             init = graph.cluster2_name2initializer[name]
             sess.run(init)  # reset the hidden variables associated with f1
             f1_update = graph.cluster2_name2f1_update[name]
-            sess.run(f1_update, feed_dict=cluster2_feed_dict)
+            sess.run(f1_update, feed_dict=fd)
             # calculate new value
             f1 = graph.cluster2_name2f1[name]
             sess.run(f1)
-    summary = sess.run(graph.cluster2_summaries, feed_dict=cluster2_feed_dict)
+    summary = sess.run(graph.cluster2_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 
 def write_pr_summaries(hub, graph, sess, data_mb, summary_writer):
     print('Making pr_summaries...')
-    pr_feed_dict = dict()
+    fd = dict()
     for layer_id in range(graph.params.num_layers):
         try:
             h = graph.hs[layer_id]
@@ -130,8 +150,8 @@ def write_pr_summaries(hub, graph, sess, data_mb, summary_writer):
             # feed placeholders
             name = '{}_pr_layer_{}'.format(hub_mode, layer_id)
             labels_plh, predictions_plh = graph.pr_name2placeholders[name]
-            pr_feed_dict[labels_plh] = labels
-            pr_feed_dict[predictions_plh] = predictions
-    summary = sess.run(graph.pr_summaries, feed_dict=pr_feed_dict)
+            fd[labels_plh] = labels
+            fd[predictions_plh] = predictions
+    summary = sess.run(graph.pr_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 

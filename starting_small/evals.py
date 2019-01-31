@@ -9,7 +9,51 @@ from starting_small import config
 from starting_small.evalutils import sample_from_iterable
 
 
+def calc_diff(hub, graph, sess, w_name, cat, diff_type):
+    """
+    return ratio of average of pairwise similarities between weights corresponding to "term_ids" and
+    average of pairwise similarities between weights corresponding to "other_term_ids".
+    represents a measure of differentiation (the higher, the more differentiation).
+    when, "diff_type" = "probes", measure indicates differentiation between probe categories.
+    when, "diff_type" = "terms", measure indicates differentiation of probe categories from all other terms.
+    it makes most sense to use "probes" for semantic probes, to measure semantic differentiaton in the noun category.
+
+    """
+    self_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.cat_probe_list_dict[cat]]
+    if diff_type == 'probes':
+        other_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.types]
+    elif diff_type == 'terms':
+        np.random.seed(1)
+        other_term_ids = np.arange(0, hub.params.num_types)
+    else:
+        raise AttributeError('Invalid arg to "diff_type"')
+    #
+    if w_name == 'wx':
+        w = sess.run(graph.wx)
+        w_filtered = w[self_term_ids, :]
+        w_other = w[other_term_ids, :]
+    elif w_name == 'wy':
+        w = sess.run(graph.wy)
+        w_filtered = w[:, self_term_ids].T
+        w_other = w[:, other_term_ids].T
+    else:
+        raise AttributeError('rnnlab: Invalid arg to "w_name"')
+    #
+    self_sim = cosine_similarity(w_filtered, w_filtered).mean().mean()
+    other_sim = cosine_similarity(w_other, w_other).mean().mean()
+
+    # TODO does computing this makes sense?
+    print('self_sim, other_sim')
+    print(self_sim, other_sim)
+
+    result = self_sim / abs(other_sim)  # TODO perhaps difference is better? ratio is really high at start
+    return result
+
+
 def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):
+    """
+    return mean-average-precision between correct terms (members of "pos") and predictions (softmax probabilities)
+    """
     # calc softmax
     cat_terms = getattr(hub, pos)
     windows_list = [hub.get_term_id_windows(cat_term, num_samples=max_term_windows)
@@ -71,8 +115,8 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
     def calc_probes_fs(thr):
         """
         WARNING: this gives incorrect results at early timepoints (lower compared to tensorflow implementation)
-        # TODO this may be due to using sim_mean as first point to bayesian-opt:
-        # TODO sim mean might not be good init point for f-score (but it is for ba)
+        # TODO this not due to using sim_mean as first point to bayesian-opt:
+        # TODO perhaps exploration-exploitation settings are only good for ba but not f1
 
         """
         tp, tn, fp, fn = calc_signals_partial(thr)
@@ -105,7 +149,7 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
 
     # use bayes optimization to find best_thr
     sims_mean = np.mean(probe_sims).item()
-    gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}
+    gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}  # without this, warnings about predicted variance < 0
     if cluster_metric == 'f1':
         fun = calc_probes_fs
     elif cluster_metric == 'ba':

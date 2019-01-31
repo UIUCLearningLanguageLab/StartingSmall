@@ -17,6 +17,7 @@ from starting_small.summaries import write_cluster_summaries
 from starting_small.summaries import write_cluster2_summaries
 from starting_small.summaries import write_pr_summaries
 from starting_small.summaries import write_ap_summaries
+from starting_small.summaries import write_diff_summaries
 
 
 # noinspection PyTypeChecker
@@ -40,6 +41,9 @@ def rnn_job(param2val):
     def evaluate(h, g, s, sw, dmb):
         write_misc_summaries(h, g, s, dmb, sw) if config.Eval.summarize_misc else None
         write_h_summaries(h, g, s, dmb, sw) if config.Eval.summarize_h else None
+
+        write_diff_summaries(h, g, s, dmb, sw)  # TOD test
+
         write_ap_summaries(h, g, s, dmb, sw)
         write_cluster_summaries(h, g, s, dmb, sw)
         write_cluster2_summaries(h, g, s, dmb, sw)
