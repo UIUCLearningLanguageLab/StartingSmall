@@ -8,6 +8,7 @@ KEY = 'num_saves'
 VALUE = 10
 PARAMS_TO_DISPLAY = ['part_order',
                      'num_parts',
+                     'bptt_steps',
                      'num_iterations_start',
                      'num_iterations_end']
 

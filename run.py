@@ -33,17 +33,21 @@ def run_on_host():
     """
     from ludwigcluster.utils import list_all_param2vals
     #
-    # config.Dirs.runs = config.Dirs.root / 'runs'
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
         param2val['job_name'] += 'start{}_'.format(param2val['num_iterations_start'])
         param2val['job_name'] += 'end{}_'.format(param2val['num_iterations_end'])
         param2val['job_name'] += 'order{}_'.format(param2val['part_order'])
+        param2val['job_name'] += 'num_parts{}_'.format(param2val['num_parts'])
+        #
+        # print('WARNING: Becuase running locally, setting num_iterations=1')
+        # param2val['num_iterations_start'] = 1
+        # param2val['num_iterations_end'] = 1
         rnn_job(param2val)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)  # TODO set default to False
+    parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)
     namespace = parser.parse_args()
     if namespace.local:
         run_on_host()

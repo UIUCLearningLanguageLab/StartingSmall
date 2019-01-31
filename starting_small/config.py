@@ -27,7 +27,7 @@ class Eval:
     num_h_samples = 1000 * 10  # default for CHILDES: 1000 * 10 (1000 * 100 is larger than sample)
 
     pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
-
+    w_names = ['wx', 'wy']
 
 class Graph:
     device = 'gpu'
