@@ -37,6 +37,9 @@ for param_p in runs_p.glob('param_*'):
 
             dst = str(tb_p / new_name)
             print('Moving {} to {}'.format(src, dst))
-            shutil.copytree(src, dst)
+            try:
+                shutil.copytree(src, dst)
+            except FileExistsError as e:
+                print('WARNING:', e)  # TODO how to use replicas in tensorboard?
 
     print()
