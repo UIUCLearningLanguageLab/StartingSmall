@@ -27,8 +27,9 @@ class Eval:
     hub_modes = ['sem']  # sem, syn  # TODO add events, syns by POS
     cluster_metrics = ['ba', 'f1', 'ck']  # ba, f1, ck
     pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
-    w_names = ['wx', 'wy']
-    diff_types = ['terms']  # 'probes',
+    w_names = ['wy']  # 'wx',
+    word_types = ['terms']  # 'probes',
+    op_types = ['ratio', 'diff']
 
 class Graph:
     device = 'gpu'

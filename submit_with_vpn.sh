@@ -16,7 +16,7 @@
 echo "Submitting to Ludwig..."
 cd /home/ph/StartingSmall
 source venv/bin/activate
-python submit.py -r1 -s
+python submit.py -r3 -s
 deactivate
 echo "Submission completed"
 

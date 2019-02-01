@@ -24,12 +24,14 @@ class DirectGraph:
         self.x = tf.placeholder(tf.int32, [None, None])
         self.y = tf.placeholder(tf.int32, [None, None])
 
-        # diff placeholders
-        self.diff_name2placeholder = {}
-        for diff_type in config.Eval.diff_types:
-            for w_name in config.Eval.w_names:
-                name = '{}_diff_{}'.format(diff_type, w_name)
-                self.diff_name2placeholder[name] = tf.placeholder(tf.float32)
+        # sim placeholders
+        self.sim_name2placeholder = {}
+        for hub_mode in config.Eval.hub_modes:
+            for word_type in config.Eval.word_types:
+                for op_type in config.Eval.op_types:
+                    for w_name in config.Eval.w_names:
+                        name = '{}_{}_{}_sim_{}'.format(hub_mode, word_type, w_name, op_type)
+                        self.sim_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # ap placeholders
         self.ap_name2placeholder = {}
@@ -172,8 +174,8 @@ class DirectGraph:
                     self.cluster2_name2initializer[name] = running_vars_initializer
 
             # summaries
-            self.diff_summaries = tf.summary.merge(
-                [tf.summary.histogram(k, v) for k, v in self.diff_name2placeholder.items()])
+            self.sim_summaries = tf.summary.merge(
+                [tf.summary.histogram(k, v) for k, v in self.sim_name2placeholder.items()])
             self.ap_summaries = tf.summary.merge(
                 [tf.summary.scalar(k, v) for k, v in self.ap_name2placeholder.items()])
             self.misc_summaries = tf.summary.merge(

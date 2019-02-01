@@ -11,22 +11,18 @@ from starting_small.evals import make_gold
 from starting_small.evals import calc_diff
 
 
-def write_diff_summaries(hub, graph, sess, data_mb, summary_writer):
-    print('Making within_diff_summaries...')
+def write_sim_summaries(hub, graph, sess, data_mb, summary_writer):
+    print('Making sim_summaries...')
     fd = dict()
-    for diff_type in config.Eval.diff_types:
-        for w_name in config.Eval.w_names:
-            name = '{}_diff_{}'.format(diff_type, w_name)
-            placeholder = graph.diff_name2placeholder[name]
-
-            fd[placeholder] = np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type) for cat in hub.probe_store.cats])  # TODO test
-
-            for cat in hub.probe_store.cats:
-                print(cat)
-                print(np.array([calc_diff(hub, graph, sess, w_name, cat, diff_type)]))
-
-
-    summary = sess.run(graph.diff_summaries, feed_dict=fd)  # TODO should be a distribution summary, showing within_diff score for each cat separately
+    for hub_mode in config.Eval.hub_modes:
+        for word_type in config.Eval.word_types:
+            for op_type in config.Eval.op_types:
+                for w_name in config.Eval.w_names:
+                    name = '{}_{}_{}_sim_{}'.format(hub_mode, word_type, w_name, op_type)
+                    placeholder = graph.sim_name2placeholder[name]
+                    fd[placeholder] = np.array([calc_diff(hub, graph, sess, cat, word_type, op_type, w_name)
+                                                for cat in hub.probe_store.cats])
+    summary = sess.run(graph.sim_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 

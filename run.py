@@ -2,6 +2,7 @@ import argparse
 import pickle
 import socket
 import sys
+import yaml
 
 from starting_small import config
 sys.path.append(str(config.Dirs.remote_root))  # import childeshub from there
@@ -33,11 +34,10 @@ def run_on_host():
     """
     from ludwigcluster.utils import list_all_param2vals
     #
-    for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': ''}):
-        param2val['job_name'] += 'start{}_'.format(param2val['num_iterations_start'])
-        param2val['job_name'] += 'end{}_'.format(param2val['num_iterations_end'])
-        param2val['job_name'] += 'order{}_'.format(param2val['part_order'])
-        param2val['job_name'] += 'num_parts{}_'.format(param2val['num_parts'])
+    for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
+        param2val_p = config.Dirs.runs / param2val['param_name'] / 'param2val.yaml'
+        with param2val_p.open('w', encoding='utf8') as f:
+            yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
         #
         # print('WARNING: Becuase running locally, setting num_iterations=1')
         # param2val['num_iterations_start'] = 1

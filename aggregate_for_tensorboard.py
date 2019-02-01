@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 IS_BACKUP = False
+IS_TEST = False
+
 KEY = 'num_saves'
 VALUE = 10
 PARAMS_TO_DISPLAY = ['part_order',
@@ -23,24 +25,31 @@ for p in tb_p.iterdir():
     p.rmdir()
 
 runs_p = Path('backup') if IS_BACKUP else Path('runs')
-for param_p in runs_p.glob('param_*'):
+if IS_TEST:
+    pattern1 = 'test'
+    pattern2 = 'test'
+    print('Looking for test summaries...')
+else:
+    pattern1 = 'param_*'
+    pattern2 = '*num*'
+num_found = 0
+for param_p in runs_p.glob(pattern1):
     with (param_p / 'param2val.yaml').open('r') as f:
         param2val = yaml.load(f)
-    print(param_p)
     #
     if param2val[KEY] == VALUE:
-        for job_p in param_p.glob('*num*'):
+        for job_p in param_p.glob(pattern2):
             if len(list(job_p.iterdir())) == 0:
                 continue
+            num_found += 1
             src = str(job_p)
-
             new_name = '__'.join(['{}={}'.format(p, param2val[p]) for p in PARAMS_TO_DISPLAY])
-
             dst = str(tb_p / new_name)
-            print('Moving {} to {}'.format(src, dst))
+            print('Moving {} to\n{}'.format(src, dst))
             try:
                 shutil.copytree(src, dst)
             except FileExistsError as e:
                 print('WARNING:', e)  # TODO how to use replicas in tensorboard?
 
     print()
+print('Found {} param_dirs'.format(num_found))

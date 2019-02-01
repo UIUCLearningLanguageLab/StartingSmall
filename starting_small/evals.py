@@ -9,7 +9,7 @@ from starting_small import config
 from starting_small.evalutils import sample_from_iterable
 
 
-def calc_diff(hub, graph, sess, w_name, cat, diff_type):
+def calc_diff(hub, graph, sess, cat, word_type, op_type, w_name):
     """
     return ratio of average of pairwise similarities between weights corresponding to "term_ids" and
     average of pairwise similarities between weights corresponding to "other_term_ids".
@@ -20,9 +20,9 @@ def calc_diff(hub, graph, sess, w_name, cat, diff_type):
 
     """
     self_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.cat_probe_list_dict[cat]]
-    if diff_type == 'probes':
+    if word_type == 'probes':
         other_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.types]
-    elif diff_type == 'terms':
+    elif word_type == 'terms':
         np.random.seed(1)
         other_term_ids = np.arange(0, hub.params.num_types)
     else:
@@ -43,11 +43,15 @@ def calc_diff(hub, graph, sess, w_name, cat, diff_type):
     other_sim = cosine_similarity(w_other, w_other).mean().mean()
 
     # TODO does computing this makes sense?
-    print('self_sim, other_sim')
-    print(self_sim, other_sim)
+    print(cat)
+    print('{:.4f} {:.4f} {:.4f} {:.4f}'.format(
+        self_sim, other_sim, self_sim - abs(other_sim), self_sim / abs(other_sim)))
 
-    result = self_sim / abs(other_sim)  # TODO perhaps difference is better? ratio is really high at start
-    return result
+    if op_type == 'diff':
+        return self_sim - abs(other_sim)
+    elif op_type == 'ratio':
+
+        return self_sim / abs(other_sim)
 
 
 def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):
