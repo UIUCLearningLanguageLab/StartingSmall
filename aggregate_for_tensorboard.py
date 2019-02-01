@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 
-IS_BACKUP = False
+IS_BACKUP = True
 IS_TEST = False
 
 KEY = 'num_saves'
@@ -24,7 +24,7 @@ for p in tb_p.rglob('param2val*'):
 for p in tb_p.iterdir():
     p.rmdir()
 
-runs_p = Path('backup') if IS_BACKUP else Path('runs')
+search_p = Path('backup') if IS_BACKUP else Path('runs')
 if IS_TEST:
     pattern1 = 'test'
     pattern2 = 'test'
@@ -33,7 +33,7 @@ else:
     pattern1 = 'param_*'
     pattern2 = '*num*'
 num_found = 0
-for param_p in runs_p.glob(pattern1):
+for param_p in search_p.glob(pattern1):
     with (param_p / 'param2val.yaml').open('r') as f:
         param2val = yaml.load(f)
     #

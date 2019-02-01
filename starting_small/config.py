@@ -31,5 +31,12 @@ class Eval:
     word_types = ['terms']  # 'probes',
     op_types = ['ratio', 'diff']
 
+
 class Graph:
     device = 'gpu'
+
+
+class Figs:
+    lw = 2
+    axlabel_fs = 12
+    dpi=None
