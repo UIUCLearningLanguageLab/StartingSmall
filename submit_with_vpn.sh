@@ -10,8 +10,8 @@
 #cd /home/ph/LudwigCluster/scripts
 #bash upload_watchers.sh
 
-#echo "Syncing childeshub..."
-#rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/childeshub /media/lab/StartingSmall/
+echo "Syncing childeshub..."
+rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/childeshub /media/lab/StartingSmall/
 
 echo "Submitting to Ludwig..."
 cd /home/ph/StartingSmall

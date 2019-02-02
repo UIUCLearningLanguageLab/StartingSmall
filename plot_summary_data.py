@@ -10,21 +10,19 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 TAG = 'sem_ordered_ba_layer_0'
-IS_BACKUP = True
 NUM_X = 10 + 1
 FIGSIZE = (20, 10)
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.part_order = ['inc_age', 'dec_age']
-MatchParams.num_iterations_start = [2]
-MatchParams.num_iterations_end = [38]
+MatchParams.num_iterations = [[2, 38], [38, 2]]
 
 
 def gen_param_ps(param2requested, param2default):
     compare_params = [param for param, val in param2requested.__dict__.items()
                       if val != param2default[param]]
-    for param_p in search_p.glob('param_*'):
+    for param_p in config.Dirs.runs.glob('param_*'):
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
@@ -48,8 +46,8 @@ def get_xs_and_ys_for_param(param_p, tag):
         try:
             events = list(tf.train.summary_iterator(str(events_p)))
         except DataLossError:
-            # TODO manual copy on s76 fixes this
-            print('WARNING: Skipping {} due to DataLossError.'.format(events_p.relative_to(search_p)))
+            print('WARNING: Skipping {} due to DataLossError.'.format(
+                events_p.relative_to(config.Dirs.runs).parent))
         else:
             events = [event for event in events if len(event.summary.value) > 1]
             x = np.unique([event.step for event in events])
@@ -67,9 +65,6 @@ def get_simple_val(event, tag):
     except IndexError:
         return None
 
-
-# search path
-search_p = config.Dirs.backup if IS_BACKUP else config.Dirs.runs
 
 # summary_data
 summary_data = []

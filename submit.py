@@ -40,4 +40,5 @@ if __name__ == '__main__':
                   param2val_list=param2val_list,
                   reps=namespace.reps,
                   test=namespace.test,
-                  worker=namespace.worker)
+                  worker=namespace.worker,
+                  backup=False)

@@ -7,7 +7,7 @@ import yaml
 from starting_small import config
 sys.path.append(str(config.Dirs.remote_root))  # import childeshub from there
 
-from starting_small.jobs import rnn_job, backup_job
+from starting_small.jobs import rnn_job
 from starting_small.params import Params
 
 hostname = socket.gethostname()
@@ -22,7 +22,6 @@ def run_on_cluster():
         param2val_chunk = pickle.load(f)
     for param2val in param2val_chunk:
         rnn_job(param2val)
-        backup_job(param2val['param_name'], param2val['job_name'], allow_rewrite=False)
     #
     print('Finished all rnn jobs.')
     print()
@@ -36,12 +35,10 @@ def run_on_host():
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
         param2val_p = config.Dirs.runs / param2val['param_name'] / 'param2val.yaml'
+        if not param2val_p.parent.exists():
+            param2val_p.parent.mkdir(parents=True)
         with param2val_p.open('w', encoding='utf8') as f:
             yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
-        #
-        # print('WARNING: Becuase running locally, setting num_iterations=1')
-        # param2val['num_iterations_start'] = 1
-        # param2val['num_iterations_end'] = 1
         rnn_job(param2val)
 
 

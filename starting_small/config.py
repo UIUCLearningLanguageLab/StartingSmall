@@ -10,7 +10,6 @@ class Dirs:
     #
     remote_root = Path('/media/lab') / 'StartingSmall'
     runs = remote_root / 'runs'
-    backup = remote_root / 'backup'
 
 
 class Eval:
@@ -39,4 +38,4 @@ class Graph:
 class Figs:
     lw = 2
     axlabel_fs = 12
-    dpi=None
+    dpi = None

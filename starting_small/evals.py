@@ -237,7 +237,8 @@ def calc_pp(hub, graph, sess, is_test):
     print('Calculating {} perplexity...'.format('test' if is_test else 'train'))
     pp_sum, num_batches, pp = 0, 0, 0
     pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
-    for (x, y) in hub.gen_ids(num_iterations=1, is_test=is_test):
+    num_iterations_list = [1] * hub.params.num_parts
+    for (x, y) in hub.gen_ids(num_iterations_list, is_test=is_test):
         pbar.update()
         pp_batch = sess.run(graph.mean_pp, feed_dict={graph.x: x, graph.y: y})
         pp_sum += pp_batch
