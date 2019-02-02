@@ -5,38 +5,40 @@ import yaml
 
 from starting_small import config
 from starting_small.figs import make_summary_trajs_fig
-from starting_small.params import DefaultParams
+from starting_small.params import DefaultParams as MatchParams
 
 from ludwigcluster.utils import list_all_param2vals
 
 TAG = 'sem_ordered_ba_layer_0'
-COMPARE_PARAMS = ['part_order', 'num_iterations_start']  # TODO make this interface more flexible
-
 IS_BACKUP = True
 NUM_X = 10 + 1
+FIGSIZE = (20, 10)
 
-FIGSIZE = (16, 12)
+
+default_dict = MatchParams.__dict__.copy()
+MatchParams.part_order = ['inc_age', 'dec_age']
+MatchParams.num_iterations_start = [2]
+MatchParams.num_iterations_end = [38]
 
 
-def gen_param_ps(compare_params):
+def gen_param_ps(param2requested, param2default):
+    compare_params = [param for param, val in param2requested.__dict__.items()
+                      if val != param2default[param]]
     for param_p in search_p.glob('param_*'):
         print('Checking {}...'.format(param_p))
-        # check params
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
-        param2val1 = param2val.copy()
-        label = ''
-        for compare_param in compare_params:
-            label += '{}={}\n'.format(compare_param, param2val[compare_param])
-            param2val1[compare_param] = default_param2val[compare_param]
-        param2val1['param_name'] = default_param2val['param_name']
-        param2val1['job_name'] = default_param2val['job_name']
-        if param2val1 == default_param2val:
-            print('Found data')
+        param2val = param2val.copy()
+        match_param2vals = list_all_param2vals(param2requested, add_names=False)
+        del param2val['param_name']
+        del param2val['job_name']
+        if param2val in match_param2vals:
+            print('Param2val matches')
+            label = '\n'.join(['{}={}'.format(param, param2val[param]) for param in compare_params])
             yield param_p, label
 
 
-def get_xs_and_ys_for_param(param_p):
+def get_xs_and_ys_for_param(param_p, tag):
     events_ps = list(param_p.glob('*num*/*events*'))
     num_event_files = len(events_ps)
     xs = np.zeros((num_event_files, NUM_X))
@@ -51,15 +53,15 @@ def get_xs_and_ys_for_param(param_p):
         else:
             events = [event for event in events if len(event.summary.value) > 1]
             x = np.unique([event.step for event in events])
-            y = [simple_val for simple_val in [get_simple_val(event) for event in events]
+            y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
                  if simple_val is not None]
             xs[i] = x
             ys[i] = y
     return xs, ys
 
 
-def get_simple_val(event):
-    simple_vals = [v.simple_value for v in event.summary.value if v.tag == TAG]
+def get_simple_val(event, tag):
+    simple_vals = [v.simple_value for v in event.summary.value if v.tag == tag]
     try:
         return simple_vals[0]
     except IndexError:
@@ -69,13 +71,10 @@ def get_simple_val(event):
 # search path
 search_p = config.Dirs.backup if IS_BACKUP else config.Dirs.runs
 
-# default params
-default_param2val = list_all_param2vals(DefaultParams)[0]
-
-# summary trajectories
+# summary_data
 summary_data = []
-for param_p, label in gen_param_ps(COMPARE_PARAMS):
-    xs, ys = get_xs_and_ys_for_param(param_p)
+for param_p, label in gen_param_ps(MatchParams, default_dict):
+    xs, ys = get_xs_and_ys_for_param(param_p, TAG)
     summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label))
 
 # plot
