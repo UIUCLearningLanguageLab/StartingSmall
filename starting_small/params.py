@@ -24,3 +24,23 @@ class Params:
     optimizer = ['adagrad']
     embed_size = [512]  # default: 512
     wx_init = ['random']
+
+
+class DefaultParams:
+    num_parts = [2]
+    corpus_name = ['childes-20180319']
+    probes_name = ['childes-20180319_4096']
+    num_types = [4096]
+    part_order = ['inc_age']
+    num_iterations_start = [20]
+    num_iterations_end = [20]
+    reinit = [None]
+    num_saves = [10]
+    bptt_steps = [7]
+    num_layers = [1]
+    mb_size = [64]
+    lr = [0.01]
+    flavor = ['rnn']
+    optimizer = ['adagrad']
+    embed_size = [512]
+    wx_init = ['random']

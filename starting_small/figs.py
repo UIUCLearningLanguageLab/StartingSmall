@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
-
+import numpy as np
+import seaborn as sns
 
 from starting_small import config
 
@@ -13,12 +14,9 @@ def human_format(num, pos):  # pos is required for formatting mpl axis ticklabel
     return '{}{}'.format(num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 
-def make_avg_traj_fig(x, y, traj_name):
-    """
-    Returns fig showing trajectory of "traj_name"
-    """
+def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None):
     # fig
-    fig, ax = plt.subplots(dpi=config.Figs.dpi)
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
     ax.set_xlabel('Mini Batch', fontsize=config.Figs.axlabel_fs)
     ax.set_ylabel(traj_name, fontsize=config.Figs.axlabel_fs)
     ax.spines['right'].set_visible(False)
@@ -27,6 +25,11 @@ def make_avg_traj_fig(x, y, traj_name):
     ax.xaxis.set_major_formatter(FuncFormatter(human_format))
     ax.yaxis.grid(True)
     # plot
-    ax.plot(x, y, '-', linewidth=config.Figs.lw, color='black')
+    num_summaries = len(summary_data)
+    palette = iter(sns.color_palette('hls', num_summaries))
+    for x, mean_traj, std_traj, label in summary_data:
+        ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette), label=label)
+        ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')
+    plt.legend(loc='upper left')
     plt.tight_layout()
     return fig
