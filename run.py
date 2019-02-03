@@ -35,7 +35,7 @@ def run_on_host(debug):
     from ludwigcluster.utils import list_all_param2vals
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
-        param2val_p = config.Dirs.runs / param2val['param_name'] / 'param2val.yaml'
+        param2val_p = config.Dirs.remote_runs / param2val['param_name'] / 'param2val.yaml'
         if not param2val_p.parent.exists():
             param2val_p.parent.mkdir(parents=True)
         with param2val_p.open('w', encoding='utf8') as f:

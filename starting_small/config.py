@@ -7,9 +7,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 class Dirs:
     root = Path(__file__).parent.parent
     src = root / 'starting_small'
+    local_runs = root / '{}_runs'.format(src.name)
     #
     remote_root = Path('/media/lab') / 'StartingSmall'
-    runs = remote_root / 'runs'
+    remote_runs = remote_root / 'runs'
 
 
 class Eval:

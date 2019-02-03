@@ -14,7 +14,7 @@ def human_format(num, pos):  # pos is required for formatting mpl axis ticklabel
     return '{}{}'.format(num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 
-def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None):
+def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None, ylims=None):
     # fig
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
     ax.set_xlabel('Mini Batch', fontsize=config.Figs.axlabel_fs)
@@ -24,6 +24,8 @@ def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None):
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.xaxis.set_major_formatter(FuncFormatter(human_format))
     ax.yaxis.grid(True)
+    if ylims is not None:
+        ax.set_ylim(ylims)
     # plot
     num_summaries = len(summary_data)
     palette = iter(sns.color_palette('hls', num_summaries))

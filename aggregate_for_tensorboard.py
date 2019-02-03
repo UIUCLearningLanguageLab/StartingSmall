@@ -7,9 +7,9 @@ IS_TEST = False
 
 KEY = 'num_saves'
 VALUE = 10
+MAX_NUM_REP = 5
 PARAMS_TO_DISPLAY = ['part_order',
                      'num_parts',
-                     'bptt_steps',
                      'num_iterations']
 
 tb_p = Path('tensorboard')
@@ -40,13 +40,18 @@ for param_p in Path('runs').glob(pattern1):
                 continue
             num_found += 1
             src = str(job_p)
-            new_name = '__'.join(['{}={}'.format(p, param2val[p]) for p in PARAMS_TO_DISPLAY])
-            dst = str(tb_p / new_name)
-            print('Moving {} to\n{}'.format(src, dst))
-            try:
-                shutil.copytree(src, dst)
-            except FileExistsError as e:
-                print('WARNING:', e)
+            # move
+            for rep in range(MAX_NUM_REP):
+                new_name = '__'.join(['{}={}'.format(p, param2val[p]) for p in PARAMS_TO_DISPLAY]) + \
+                           '_rep{}'.format(rep)
+                dst = str(tb_p / new_name)
+                print('Moving {} to\n{}'.format(src, dst))
+                try:
+                    shutil.copytree(src, dst)
+                except FileExistsError as e:
+                    print('Trying again with new rep')
+                else:
+                    break
 
     print()
 print('Found {} param_dirs'.format(num_found))
