@@ -10,17 +10,14 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 TAG = 'sem_ordered_ba_layer_0'
-NUM_X = 2 + 1
+NUM_X = 10 + 1
 FIGSIZE = (20, 10)
-VERBOSE = True
+VERBOSE = False
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.part_order = ['inc_age', 'dec_age']
-MatchParams.num_iterations = [[1, 1]]
-MatchParams.num_saves = [1]
-MatchParams.embed_size = [32]
-MatchParams.bptt_steps = [1]
+MatchParams.part_order = ['dec_age']
+MatchParams.num_iterations = [[2, 38], [38, 2], [20, 20]]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -50,7 +47,8 @@ def print_tags(events):
 
 def get_xs_and_ys_for_param(param_p, tag):
     events_ps = list(param_p.glob('*num*/*events*'))
-    print('Found:', events_ps)
+    if VERBOSE:
+        print('Found {} event files', len(events_ps))
     xs = []
     ys = []
     #
@@ -61,16 +59,12 @@ def get_xs_and_ys_for_param(param_p, tag):
             print('WARNING: Skipping {} due to DataLossError.'.format(
                 events_p.relative_to(config.Dirs.runs).parent))
         else:
-            events = [event for event in events if len(event.summary.value) > 1]
             if VERBOSE:
                 print_tags(events)
             x = np.unique([event.step for event in events])
             y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
                  if simple_val is not None]
-
-            # TODO debug
-            print(len(x))
-
+            print('Read {} events'.format(len(x)))
             if len(x) != NUM_X or len(y) != NUM_X:
                 continue
             else:
@@ -94,8 +88,9 @@ for param_p, label in gen_param_ps(MatchParams, default_dict):
     if VERBOSE:
         print(ys)
     if xs and ys:
-        summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label))
+        summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
 
 # plot
+summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
 fig = make_summary_trajs_fig(summary_data, TAG, figsize=FIGSIZE)
 fig.show()

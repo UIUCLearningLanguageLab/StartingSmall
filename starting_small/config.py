@@ -15,12 +15,12 @@ class Dirs:
 class Eval:
     debug = False
     #
-    summarize_cluster2 = False
+    summarize_cluster2 = True
+    summarize_ap = True
+    summarize_sim = True
     summarize_misc = False
     summarize_h = False
-    summarize_sim = False
     summarize_train_pp = False
-    summarize_ap = False
     summarize_pr = False
     #
     verbose_opt = True
@@ -44,5 +44,6 @@ class Graph:
 
 class Figs:
     lw = 2
-    axlabel_fs = 12
+    axlabel_fs = 16
+    leg_fs = 16
     dpi = None

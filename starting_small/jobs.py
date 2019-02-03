@@ -35,16 +35,17 @@ def rnn_job(param2val):
                 return False
 
         # check data loss
+        events_p = None
         for events_p in loc_job_p.glob('*events*'):
             if is_dataloss(events_p):
                 return RuntimeError('Detected data loss in events file. Did you close file writer?')
 
         #  move events file to shared drive
-        dst = config.Dirs.runs / param2val['param_name']
+        dst = config.Dirs.runs / param2val['param_name'] /param2val['job_name']
         if not dst.exists():
             dst.mkdir(parents=True)
-
         shutil.move(str(events_p), str(dst))
+
         # write param2val to shared drive
         param2val_p = config.Dirs.runs / param2val['param_name'] / 'param2val.yaml'
         if not param2val_p.exists():

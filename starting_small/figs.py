@@ -27,9 +27,11 @@ def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None):
     # plot
     num_summaries = len(summary_data)
     palette = iter(sns.color_palette('hls', num_summaries))
-    for x, mean_traj, std_traj, label in summary_data:
-        ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette), label=label)
+    for x, mean_traj, std_traj, label, n in summary_data:
+        ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette),
+                label=label + '\nn={}'.format(n))
         ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')
-    plt.legend(loc='upper left')
+    plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0,
+               fontsize=config.Figs.leg_fs, frameon=False)
     plt.tight_layout()
     return fig
