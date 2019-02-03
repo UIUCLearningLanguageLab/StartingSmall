@@ -21,7 +21,7 @@ def make_summary_trajs_fig(summary_data, traj_name, figsize=None, dpi=None):
     ax.set_ylabel(traj_name, fontsize=config.Figs.axlabel_fs)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    ax.tick_params(axis='both', which='both', top='off', right='off')
+    ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.xaxis.set_major_formatter(FuncFormatter(human_format))
     ax.yaxis.grid(True)
     # plot

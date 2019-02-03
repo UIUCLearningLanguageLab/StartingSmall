@@ -13,9 +13,16 @@ class Dirs:
 
 
 class Eval:
+    debug = False
+    #
+    summarize_cluster2 = False
     summarize_misc = False
     summarize_h = False
+    summarize_sim = False
     summarize_train_pp = False
+    summarize_ap = False
+    summarize_pr = False
+    #
     verbose_opt = True
     num_opt_steps = 10  # 10
     num_opt_init_steps = 5  # 2 is okay
@@ -24,11 +31,11 @@ class Eval:
     #
     context_types = ['ordered']  # none, ordered, shuffled, last
     hub_modes = ['sem']  # sem, syn  # TODO add events, syns by POS
-    cluster_metrics = ['ba', 'f1', 'ck']  # ba, f1, ck
-    pos_for_map = ['nouns', 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
+    cluster_metrics = ['ba']  # ba, f1, ck
+    pos_for_map = ['nouns']  #, 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
     w_names = ['wy']  # 'wx',
     word_types = ['terms']  # 'probes',
-    op_types = ['ratio', 'diff']
+    op_types = ['diff']  # 'ratio',
 
 
 class Graph:

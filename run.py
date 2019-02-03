@@ -3,6 +3,7 @@ import pickle
 import socket
 import sys
 import yaml
+from datetime import datetime
 
 from starting_small import config
 sys.path.append(str(config.Dirs.remote_root))  # import childeshub from there
@@ -23,11 +24,11 @@ def run_on_cluster():
     for param2val in param2val_chunk:
         rnn_job(param2val)
     #
-    print('Finished all rnn jobs.')
+    print('Finished all rnn jobs at {}.'.format(datetime.now()))
     print()
 
 
-def run_on_host():
+def run_on_host(debug):
     """
     run jobs on the local host for testing/development
     """
@@ -39,14 +40,19 @@ def run_on_host():
             param2val_p.parent.mkdir(parents=True)
         with param2val_p.open('w', encoding='utf8') as f:
             yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
+        #
+        if debug:
+            config.Eval.debug = True
+            param2val['num_saves'] = 1
         rnn_job(param2val)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)
+    parser.add_argument('-d', default=False, action='store_true', dest='debug', required=False)
     namespace = parser.parse_args()
     if namespace.local:
-        run_on_host()
+        run_on_host(namespace.debug)
     else:
         run_on_cluster()

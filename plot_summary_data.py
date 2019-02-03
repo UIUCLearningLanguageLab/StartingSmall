@@ -10,13 +10,17 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 TAG = 'sem_ordered_ba_layer_0'
-NUM_X = 10 + 1
+NUM_X = 2 + 1
 FIGSIZE = (20, 10)
+VERBOSE = True
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.part_order = ['inc_age', 'dec_age']
-MatchParams.num_iterations = [[2, 38], [38, 2]]
+MatchParams.num_iterations = [[1, 1]]
+MatchParams.num_saves = [1]
+MatchParams.embed_size = [32]
+MatchParams.bptt_steps = [1]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -36,11 +40,19 @@ def gen_param_ps(param2requested, param2default):
             yield param_p, label
 
 
+def print_tags(events):
+    tags = set()
+    for event in events:
+        for v in event.summary.value:
+            tags.add(v.tag)
+    print(tags)
+
+
 def get_xs_and_ys_for_param(param_p, tag):
     events_ps = list(param_p.glob('*num*/*events*'))
-    num_event_files = len(events_ps)
-    xs = np.zeros((num_event_files, NUM_X))
-    ys = np.zeros((num_event_files, NUM_X))
+    print('Found:', events_ps)
+    xs = []
+    ys = []
     #
     for i, events_p in enumerate(events_ps):
         try:
@@ -50,11 +62,20 @@ def get_xs_and_ys_for_param(param_p, tag):
                 events_p.relative_to(config.Dirs.runs).parent))
         else:
             events = [event for event in events if len(event.summary.value) > 1]
+            if VERBOSE:
+                print_tags(events)
             x = np.unique([event.step for event in events])
             y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
                  if simple_val is not None]
-            xs[i] = x
-            ys[i] = y
+
+            # TODO debug
+            print(len(x))
+
+            if len(x) != NUM_X or len(y) != NUM_X:
+                continue
+            else:
+                xs.append(x)
+                ys.append(y)
     return xs, ys
 
 
@@ -70,7 +91,10 @@ def get_simple_val(event, tag):
 summary_data = []
 for param_p, label in gen_param_ps(MatchParams, default_dict):
     xs, ys = get_xs_and_ys_for_param(param_p, TAG)
-    summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label))
+    if VERBOSE:
+        print(ys)
+    if xs and ys:
+        summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label))
 
 # plot
 fig = make_summary_trajs_fig(summary_data, TAG, figsize=FIGSIZE)
