@@ -2,7 +2,6 @@ import argparse
 import pickle
 import socket
 import sys
-import yaml
 from datetime import datetime
 
 from starting_small import config
@@ -28,22 +27,13 @@ def run_on_cluster():
     print()
 
 
-def run_on_host(debug):
+def run_on_host():
     """
     run jobs on the local host for testing/development
     """
     from ludwigcluster.utils import list_all_param2vals
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
-        param2val_p = config.Dirs.remote_runs / param2val['param_name'] / 'param2val.yaml'
-        if not param2val_p.parent.exists():
-            param2val_p.parent.mkdir(parents=True)
-        with param2val_p.open('w', encoding='utf8') as f:
-            yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
-        #
-        if debug:
-            config.Eval.debug = True
-            param2val['num_saves'] = 1
         rnn_job(param2val)
 
 
@@ -52,7 +42,10 @@ if __name__ == '__main__':
     parser.add_argument('-l', default=False, action='store_true', dest='local', required=False)
     parser.add_argument('-d', default=False, action='store_true', dest='debug', required=False)
     namespace = parser.parse_args()
+    if namespace.debug:
+        config.Eval.debug = True
+    #
     if namespace.local:
-        run_on_host(namespace.debug)
+        run_on_host()
     else:
         run_on_cluster()

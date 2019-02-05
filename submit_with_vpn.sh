@@ -7,8 +7,8 @@
 #pwd=$(cat /home/ph/.sudo_pwd)
 #echo ${pwd} | sudo -S mount /media/lab
 #
-#cd /home/ph/LudwigCluster/scripts
-#bash upload_watchers.sh
+cd /home/ph/LudwigCluster/scripts
+bash upload_watchers.sh
 
 echo "Syncing childeshub..."
 rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/childeshub /media/lab/StartingSmall/
@@ -16,7 +16,7 @@ rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/ch
 echo "Submitting to Ludwig..."
 cd /home/ph/StartingSmall
 source venv/bin/activate
-python submit.py -r5 -s
+python submit.py -r5 -s -w hawkins
 deactivate
 echo "Submission completed"
 

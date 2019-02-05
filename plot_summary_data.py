@@ -9,8 +9,8 @@ from starting_small.params import DefaultParams as MatchParams
 
 from ludwigcluster.utils import list_all_param2vals
 
-# TAG = 'sem_ordered_ba_layer_0'
-TAG = 'sem_tf-f1_layer_0_summary'
+TAG = 'sem_ordered_ba_layer_0'
+# TAG = 'sem_tf-f1_layer_0_summary'
 # TAG = 'sem_terms_wy_sim_diff'  # TODO why is this zero - is it the mean of the distribution?
 NUM_X = 10 + 1
 FIGSIZE = (20, 10)
@@ -20,8 +20,11 @@ YLIMs = None  #[0.15, 0.35]
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.part_order = ['inc_age']
-MatchParams.num_iterations = [[10, 30], [30, 10], [20, 20]]
+MatchParams.part_order = ['dec_age', 'inc_age']
+MatchParams.num_parts = [2]
+MatchParams.optimizer = ['adagrad']
+MatchParams.bptt_steps = [3]
+MatchParams.num_iterations = [[20, 20]]  # [10, 30], [30, 10],
 # MatchParams.num_iterations = [[2, 38], [38, 2], [20, 20]]
 
 
@@ -92,7 +95,7 @@ for param_p, label in gen_param_ps(MatchParams, default_dict):
     xs, ys = get_xs_and_ys_for_param(param_p, TAG)
     if VERBOSE:
         print(ys)
-    if xs and ys:
+    if xs and ys and np.mean(ys, axis=0)[-1] > 0.64:
         summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
 summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
 if not summary_data:

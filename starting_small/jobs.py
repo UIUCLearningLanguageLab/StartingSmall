@@ -75,7 +75,7 @@ def rnn_job(param2val):
         write_sim_summaries(h, g, s, dmb, sw) if config.Eval.summarize_sim else None
         write_ap_summaries(h, g, s, dmb, sw) if config.Eval.summarize_ap else None
         write_cluster_summaries(h, g, s, dmb, sw)
-        write_cluster2_summaries(h, g, s, dmb, sw)  if config.Eval.summarize_cluster2 else None
+        write_cluster2_summaries(h, g, s, dmb, sw) if config.Eval.summarize_cluster2 else None
         write_pr_summaries(h, g, s, dmb, sw) if config.Eval.summarize_pr else None
 
         # TODO separate h_summaries by POS (use hub POS information) (e.g. noun_sims, verb_sims)
@@ -157,4 +157,4 @@ def rnn_job(param2val):
         summary_writer.flush()
         summary_writer.close()
         time.sleep(1)
-        move_event_file_to_server(local_job_p)
+        move_event_file_to_server(local_job_p) if not config.Eval.debug else None
