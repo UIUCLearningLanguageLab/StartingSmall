@@ -1,58 +1,17 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import linkage, dendrogram
-from scipy.spatial.distance import pdist
-from scipy import stats
 
-E = 0.01
-NUM_SAMPLES = 1000
-NUM_DESCENDANTS = 3  # 2
-NUM_LEVELS = 6  # 9
+MAX_NGRAM_SIZE = 3
+NUM_TOKENS = 1000
+
+E = 0.1  # the higher, the less variance accounted for by more distant nodes in diffusion process
+NUM_DESCENDANTS = 2  # 2
+NUM_LEVELS = 5  # 9
 
 
-PLOT_NUM_ROWS = None
-FIGSIZE = (10, 10)
-DPI = 200
-TICKLABEL_FONTSIZE = 20
-AXLABEL_FONTSIZE = 20
-TITLE_FONTSIZE = 10
-
-
-def cluster(mat):
-    print('Clustering...')
-    lnk0 = linkage(pdist(mat))
-    dg0 = dendrogram(lnk0,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-
-    z = mat[dg0['leaves'], :]  # reorder rows
-    # top dendrogram
-    lnk1 = linkage(pdist(mat.T))
-    dg1 = dendrogram(lnk1,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-
-    z = z[:, dg1['leaves']]  # reorder cols to match leaves of dendrogram
-    return z
-
-
-def plot_heatmap(mat, name):
-    fig, ax_heatmap = plt.subplots(figsize=FIGSIZE, dpi=DPI)
-    title = 'Cluster Structure of\ndata sampled from hierarchical diffusion process\n' \
-            'with num_samples={} num_descendants={} num_levels={}\n' \
-            '{}'.format(NUM_SAMPLES, NUM_DESCENDANTS, NUM_LEVELS, name)
-    plt.title(title, fontsize=TITLE_FONTSIZE)
-    # heatmap
-    print('Plotting heatmap...')
-    ax_heatmap.imshow(mat,
-                      aspect='equal',
-                      cmap=plt.get_cmap('jet'),
-                      interpolation='nearest')
-    plt.show()
+def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
+    num_vocab = len(vocab)
+    res = [vocab[i] if i < num_vocab else 'OOV' for i in np.random.zipf(2, num_tokens)]
+    return res
 
 
 def sample_using_hierarchical_diffusion(num_levels=NUM_LEVELS, num_descendants=NUM_DESCENDANTS, e=E):
@@ -64,25 +23,43 @@ def sample_using_hierarchical_diffusion(num_levels=NUM_LEVELS, num_descendants=N
     return nodes
 
 
-# make data_mat
-data_mat = np.zeros((NUM_SAMPLES, NUM_DESCENDANTS**NUM_LEVELS))
-for n in range(NUM_SAMPLES):
-    data_mat[n] = sample_using_hierarchical_diffusion()
+def get_new_token(previous_tokens):
+    legals_list = []
+    for size in ngram_sizes:
+        try:
+            previous_token = previous_tokens[-size]
+        except IndexError:
+            break
+        else:
+            structure_mat = ngram2structure_mat[size]
+            row = structure_mat[word2id[previous_token]]
+            legals = [w for n, w in enumerate(vocab) if row[n] == 1]
+            legals_list.append(legals)
+    legal_nexts = list(set(legals_list[0]).intersection(*legals_list))
+    if not legal_nexts:
+        print('WARNING: No legal next word for {}'.format(previous_tokens[-MAX_NGRAM_SIZE:]))
+        return np.random.choice(vocab, size=1).item()  # TODO good idea?
+    else:
+        return np.random.choice(legal_nexts, size=1).item()
 
-# make random data_mat
-data_mat2 = np.ones((NUM_SAMPLES, NUM_DESCENDANTS**NUM_LEVELS))
-data_mat2 = data_mat2 - np.random.randint(0, 2, size=data_mat2.shape) * 2
+
+# vocab
+num_vocab = NUM_DESCENDANTS ** NUM_LEVELS
+vocab = ['word{}'.format(i) for i in np.arange(num_vocab)]
+word2id = {word: n for n, word in enumerate(vocab)}
+
+# ngram2structure_mat
+ngram_sizes = range(1, MAX_NGRAM_SIZE + 1)
+ngram2structure_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
+for ngram_size in ngram_sizes:
+    for n in range(num_vocab):
+        ngram2structure_mat[ngram_size][n] = sample_using_hierarchical_diffusion()
+
+# tokens
+tokens = np.random.choice(vocab, size=1).tolist()
+for _ in range(NUM_TOKENS):
+    new_token = get_new_token(tokens)
+    tokens.append(new_token)
 
 
-for n, mat in enumerate([data_mat, data_mat2]):
-    zscored = stats.zscore(mat, axis=0, ddof=1)
-    corr_z = np.dot(zscored.T, zscored)
-
-    # plot
-    n = str(n)
-    plot_heatmap(mat, 'raw data' + n)
-    # plot_heatmap(cluster(mat), 'clustered raw data' + n)
-    # plot_heatmap(zscored, 'zscored data' + n)
-    # plot_heatmap(cluster(zscored), 'clustered zscored data' + n)
-    # plot_heatmap(corr_z, 'correlations z' + n)
-    plot_heatmap(cluster(corr_z), 'clustered correlations z' + n)
+print(tokens)
