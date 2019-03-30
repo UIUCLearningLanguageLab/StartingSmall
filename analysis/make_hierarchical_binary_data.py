@@ -5,10 +5,10 @@ from scipy.spatial.distance import pdist
 from scipy import stats
 from sklearn.decomposition import PCA
 
-E = 0.1  # the higher, the less variance accounted for by more distant nodes in diffusion process
+E = 0.001  # the higher, the less variance accounted for by more distant nodes in diffusion process
 NUM_SAMPLES = 1000
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 5  # 9
+NUM_LEVELS = 4  # 9
 
 
 PLOT_NUM_ROWS = None
