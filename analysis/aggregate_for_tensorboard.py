@@ -1,6 +1,7 @@
 import yaml
 import shutil
-from pathlib import Path
+
+from starting_small import config
 
 
 IS_TEST = False
@@ -12,7 +13,7 @@ PARAMS_TO_DISPLAY = ['part_order',
                      'num_parts',
                      'num_iterations']
 
-tb_p = Path('tensorboard')
+tb_p = config.LocalDirs.root / 'tensorboard'
 
 # clean tensorboard dir
 for p in tb_p.rglob('events*'):
@@ -30,7 +31,7 @@ else:
     pattern1 = 'param_*'
     pattern2 = '*num*'
 num_found = 0
-for param_p in Path('runs').glob(pattern1):
+for param_p in config.LocalDirs.runs.glob(pattern1):
     with (param_p / 'param2val.yaml').open('r') as f:
         param2val = yaml.load(f)
     #

@@ -31,7 +31,7 @@ MatchParams.num_iterations = [[20, 20]]  # [10, 30], [30, 10],
 def gen_param_ps(param2requested, param2default):
     compare_params = [param for param, val in param2requested.__dict__.items()
                       if val != param2default[param]]
-    for param_p in config.Dirs.remote_runs.glob('param_*'):
+    for param_p in config.RemoteDirs.runs.glob('param_*'):
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
@@ -65,7 +65,7 @@ def get_xs_and_ys_for_param(param_p, tag):
             events = list(tf.train.summary_iterator(str(events_p)))
         except DataLossError:
             print('WARNING: Skipping {} due to DataLossError.'.format(
-                events_p.relative_to(config.Dirs.remote_runs).parent))
+                events_p.relative_to(config.RemoteDirs.runs).parent))
         else:
             if VERBOSE:
                 print_tags(events)

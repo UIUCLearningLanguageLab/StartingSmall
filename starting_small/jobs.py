@@ -41,13 +41,13 @@ def rnn_job(param2val):
                 return RuntimeError('Detected data loss in events file. Did you close file writer?')
 
         #  move events file to shared drive
-        dst = config.Dirs.remote_runs / param2val['param_name'] / param2val['job_name']
+        dst = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name']
         if not dst.exists():
             dst.mkdir(parents=True)
         shutil.move(str(events_p), str(dst))
 
         # write param2val to shared drive
-        param2val_p = config.Dirs.remote_runs / param2val['param_name'] / 'param2val.yaml'
+        param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
         if not param2val_p.exists():
             param2val['job_name'] = None
             with param2val_p.open('w', encoding='utf8') as f:
@@ -128,7 +128,7 @@ def rnn_job(param2val):
     with tf_graph.as_default():
         # tensorflow + tensorboard
         graph = DirectGraph(params, hub)
-        local_job_p = config.Dirs.local_runs / param2val['job_name']
+        local_job_p = config.LocalDirs.runs / param2val['job_name']
         if not local_job_p.exists():
             local_job_p.mkdir(parents=True)
         sess = tf.Session()

@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 
 from starting_small import config
-sys.path.append(str(config.Dirs.remote_root))  # import childeshub from there
+sys.path.append(str(config.RemoteDirs.root))  # import childeshub from there
 
 from starting_small.jobs import rnn_job
 from starting_small.params import Params
@@ -17,7 +17,7 @@ def run_on_cluster():
     """
     run multiple jobs on multiple LudwigCluster nodes.
     """
-    p = config.Dirs.remote_root / '{}_param2val_chunk.pkl'.format(hostname)
+    p = config.RemoteDirs.root / '{}_param2val_chunk.pkl'.format(hostname)
     with p.open('rb') as f:
         param2val_chunk = pickle.load(f)
     for param2val in param2val_chunk:
