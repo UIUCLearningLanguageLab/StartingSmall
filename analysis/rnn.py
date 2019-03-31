@@ -39,6 +39,7 @@ class RNN:
         self.init_range = init_range
         #
         self.model = TorchRNN(self.rnn_type, self.num_layers, self.input_size, self.num_hiddens, self.init_range)
+        self.model.cuda()  # call this before constructing optimizer
         self.criterion = torch.nn.CrossEntropyLoss()
         if self.optimization == 'adagrad':
             self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.learning_rate[0])
@@ -46,24 +47,6 @@ class RNN:
             self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate[0])
         else:
             raise AttributeError('Invalid arg to "optimizer"')
-
-    def train(self, seqs, verbose=False):
-        lr = self.learning_rate[0]  # initial
-        decay = self.learning_rate[1]
-        num_epochs_without_decay = self.learning_rate[2]
-        # epochs
-        for epoch in range(self.num_epochs):
-            # train
-            lr_decay = decay ** max(epoch - num_epochs_without_decay, 0)
-            lr = lr * lr_decay  # decay lr if it is time
-            self.train_epoch(seqs, lr, verbose)
-            # evaluate
-            pp = self.calc_seqs_pp(seqs)
-            print('pp={}'.format(pp))
-
-    def retrieve_wx_for_analysis(self):
-        wx_weights = self.model.wx.weight.detach().cpu().numpy()  # if stored on gpu
-        return wx_weights
 
     def to_windows(self, seq):
         padded = [self.pad_id] * self.bptt + seq
@@ -104,8 +87,8 @@ class RNN:
             y = batch[:, -1]
 
             # forward step
-            inputs = torch.LongTensor(x.T)  # requires [num_steps, mb_size]
-            targets = torch.LongTensor(y)
+            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+            targets = torch.cuda.LongTensor(y)
             hidden = self.model.init_hidden()  # must happen, because batch size changes from seq to seq
             logits = self.model(inputs, hidden)
 
@@ -129,6 +112,8 @@ class RNN:
                 print("batch {:,} perplexity: {:8.2f} | seconds elapsed in epoch: {:,.0f} ".format(
                     step, batch_pp, secs))
 
+    # ///////////////////////////////////////////////// evaluation
+
     def calc_seqs_pp(self, seqs):
         self.model.eval()  # protects from dropout
         all_windows = np.vstack([self.to_windows(seq) for seq in seqs])
@@ -137,8 +122,8 @@ class RNN:
         # prepare inputs
         x = all_windows[:, :-1]
         y = all_windows[:, -1]
-        inputs = torch.LongTensor(x.T)  # requires [num_steps, mb_size]
-        targets = torch.LongTensor(y)
+        inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+        targets = torch.cuda.LongTensor(y)
 
         # forward pass
         hidden = self.model.init_hidden()  # this must be here to re-init graph
@@ -162,6 +147,10 @@ class RNN:
         logits_torch = self.model(inputs, hidden)
         logits = logits_torch.detach().numpy()
         return logits
+
+    def get_wx(self):
+        wx_weights = self.model.wx.weight.detach().cpu().numpy()  # if stored on gpu
+        return wx_weights
 
 
 class TorchRNN(torch.nn.Module):

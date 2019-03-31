@@ -91,7 +91,7 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
             res.append(p)
 
     # define categories
-    assert num_members < thr  # a larger thr defines categories higher up in hierarchical tree
+    assert num_members <= thr  # a larger thr defines categories higher up in hierarchical tree
     probes = []
     probe2cat = {}
     cat_id = 0
@@ -122,7 +122,7 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
         annotate_above=10,  # useful in small plots so annotations don't overlap
     )
     if plot:
-        plt.show()
+        plt.show()  # TODO annotate which nodes are part of which category
 
     assert len(probes) == num_members * num_cats
     return probes, probe2cat
@@ -136,7 +136,7 @@ def sample_from_hierarchical_diffusion(num_descendants, num_levels, e):
     for level in range(num_levels):
         candidate_nodes = nodes * num_descendants
         nodes = [node if p else -node for node, p in zip(candidate_nodes,
-                                                         np.random.binomial(n=2, p=1-e, size=len(candidate_nodes)))]
+                                                         np.random.binomial(n=2, p=1 - e, size=len(candidate_nodes)))]
     return nodes
 
 
@@ -170,7 +170,7 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
         structure_mat = ngram2structure_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, structure_mat.T):
-            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == 1]  # TODO test
+            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == 1]
         size2word2legals[ngram_size] = word2legals
     # get one token at a time
     num_sent_starters = num_vocab if num_sent_starters is None else num_sent_starters
@@ -203,9 +203,7 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
     return vocab, tokens, token_ids, word2id, ngram2structure_mat
 
 
-def calc_cluster_score(probe_sims, probes, probe2cat, num_opt_init_steps=5, num_opt_steps=10):
-    print('Computing ba score...')
-
+def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
     def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
         probe_sims_clipped = np.clip(_probe_sims, 0, 1)
         probe_sims_clipped_triu = probe_sims_clipped[np.triu_indices(len(probe_sims_clipped), k=1)]
@@ -247,7 +245,7 @@ def calc_cluster_score(probe_sims, probes, probe2cat, num_opt_init_steps=5, num_
     gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}  # without this, warnings about predicted variance < 0
     bo = BayesianOptimization(calc_probes_ba, {'thr': (0.0, 1.0)}, verbose=False)
     bo.explore(
-        {'thr': [0.99, sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
+        {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
     bo.maximize(init_points=num_opt_init_steps, n_iter=num_opt_steps,
                 acq="poi", xi=0.01, **gp_params)  # smaller xi: exploitation
     best_thr = bo.res['max']['max_params']['thr']
