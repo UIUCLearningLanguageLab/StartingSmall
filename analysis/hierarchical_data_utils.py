@@ -80,30 +80,40 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
     c, _ = cophenet(z, pdist(data_mat, metric))
     assert c > 0.8
 
-    def get_all_probes_in_tree(res, z, node_id):
+    def get_all_probes_in_tree(res, visited, z, node_id):
         try:
             p = vocab[node_id.astype(int)]
         except IndexError:  # idx does not refer to leaf node (it refers to cluster)
-            get_all_probes_in_tree(res, z, z[node_id.astype(int) - len(vocab)][0])
-            get_all_probes_in_tree(res, z, z[node_id.astype(int) - len(vocab)][1])
-
+            new_node_id1 = z[node_id.astype(int) - len(vocab)][0]
+            new_node_id2 = z[node_id.astype(int) - len(vocab)][1]
+            if new_node_id1 not in visited_node_ids:
+                get_all_probes_in_tree(res, visited, z, new_node_id1)
+            if new_node_id2 not in visited_node_ids:
+                get_all_probes_in_tree(res, visited, z, new_node_id2)
         else:
             res.append(p)
+            visited_node_ids.append(node_id)
 
     # define categories
     assert num_members <= thr  # a larger thr defines categories higher up in hierarchical tree
     probes = []
     probe2cat = {}
     cat_id = 0
+    visited_node_ids = []  # prevents descending the same tree more than once (otherwise cats share probes)
     for row in z:
         if cat_id == num_cats:
             break
         idx1, idx2, dist, count = row  # idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
+        if verbose:
+            print(row)
+        #
         if count >= thr:
             probes_in_cluster = []
-            get_all_probes_in_tree(probes_in_cluster, z, idx1)  # populates probes_in_cluster
-            get_all_probes_in_tree(probes_in_cluster, z, idx2)  # populates probes_in_cluster
-            assert probes_in_cluster
+            get_all_probes_in_tree(probes_in_cluster, visited_node_ids, z, idx1)  # populates probes_in_cluster
+            get_all_probes_in_tree(probes_in_cluster, visited_node_ids, z, idx2)  # populates probes_in_cluster
+            if len(probes_in_cluster) < num_members:
+                continue  # not enough leaf nodes below nodes idx1 and idx2
+            #
             probe_cats = np.random.choice(probes_in_cluster, size=num_members, replace=False)
             probes.extend(probe_cats)
             probe2cat.update({p: cat_id for p in probe_cats})

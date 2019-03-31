@@ -13,7 +13,7 @@ class RNN:
                  num_eval_steps=1,
                  learning_rate=(0.01, 0.00, 20),
                  optimization='adagrad',
-                 init_range=0.001,
+                 init_range=0.01,
                  bptt=7,
                  num_seqs_in_batch=1,
                  shuffle_seqs=False,

@@ -10,20 +10,22 @@ from analysis.rnn import RNN
 NUM_TOKENS = 1 * 10 ** 5  # TODO 6 might overload RAM
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # use as num_cats
-NUM_LEVELS = 7
+NUM_LEVELS = 8
 E = 0.2
 
 MB_SIZE = 64
 LEARNING_RATE = (0.01, 0.00, 20)
 NUM_EPOCHS = 10
 NUM_HIDDENS = 128
+BPTT = MAX_NGRAM_SIZE
+CALC_PP = False
 
 NUM_CATS = 10
 NUM_CAT_MEMBERS = 5
-THRESHOLDS = [5, 10]  # TODO
+THRESHOLDS = [5, 10]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 1
-SENTENCE_LEN = 7  # TODO this destroys hierarchical structure but is necessary to ensure all types occur in tokens
+SENTENCE_LEN = 64  # TODO this destroys hierarchical structure but is necessary to ensure all types occur in tokens
 
 
 # make tokens with hierarchical n-gram structure
@@ -56,7 +58,7 @@ for thr in THRESHOLDS:
     # categories
     print('Making categories with thr={}'.format(thr))
     structure_mat = ngram2structure_mat[NGRAM_SIZE_FOR_CAT]  # TODO concatenate all?
-    probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr, verbose=False)
+    probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr, verbose=True)
     c = Counter(tokens)
     for p in probes:
         assert c[p] > MIN_PROBE_FREQ
@@ -75,6 +77,7 @@ for thr in THRESHOLDS:
               learning_rate=LEARNING_RATE,
               num_epochs=NUM_EPOCHS,
               num_hiddens=NUM_HIDDENS,
+              bptt=BPTT,
               num_seqs_in_batch=1)  # num_seqs_in_batch must be 1
     # train + evaluate
     lr = srn.learning_rate[0]  # initial
@@ -82,7 +85,7 @@ for thr in THRESHOLDS:
     num_epochs_without_decay = srn.learning_rate[2]
     for epoch in range(srn.num_epochs):
         # perplexity
-        pp = srn.calc_seqs_pp(train_seqs)
+        pp = srn.calc_seqs_pp(train_seqs) if CALC_PP else 0
         # ba
         wx = srn.get_wx()  # TODO retrieve hidden states instead?
         p_acts = np.asarray([wx[word2id[p], :] for p in probes])
