@@ -11,13 +11,13 @@ from analysis.rnn import RNN
 DEVELOPING = False
 
 NUM_TOKENS = 1 * 10 ** 5
-MAX_NGRAM_SIZE = 1  # TODO might overload RAM
+MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 9  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.01, 0.00, 20)
+LEARNING_RATE = (0.1, 0.00, 20)  # TODO 0.01?
 NUM_EPOCHS = 50
 NUM_HIDDENS = 512
 BPTT = MAX_NGRAM_SIZE
@@ -65,8 +65,6 @@ if not num_types_in_tokens == num_vocab:
 #
 num_theoretical_legals = num_vocab / (2 ** MAX_NGRAM_SIZE)
 print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity should converge to this value
-# TODO pp only converges to num_theoretical_legals because all other types occur only rarely due to random process
-# TODO involved in breaking tokens into sentences (SENTENCE_LEN)
 
 # train_seqs
 train_seqs = []
@@ -80,11 +78,11 @@ thr2bas = {thr: [] for thr in THRESHOLDS}
 for thr in THRESHOLDS:
     # categories
     print('Making {} categories with num_members={} and thr={}...'.format(NUM_CATS, NUM_CAT_MEMBERS, thr))
-    structure_mat = ngram2structure_mat[NGRAM_SIZE_FOR_CAT]  # TODO concatenate all?
+    structure_mat = ngram2structure_mat[NGRAM_SIZE_FOR_CAT]
     probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr)
     c = Counter(tokens)
     for p in probes:
-        print(p, c[p])  # TODO check for bimodality - half of probes are never systematically predicted
+        # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bimodality
         assert c[p] > MIN_PROBE_FREQ
     print('Collected {} probes'.format(len(probes)))
     if DEVELOPING:

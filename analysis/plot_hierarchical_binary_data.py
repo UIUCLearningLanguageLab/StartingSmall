@@ -8,8 +8,8 @@ from scipy.spatial.distance import pdist
 from analysis.hierarchical_data_utils import sample_from_hierarchical_diffusion
 
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 8  # 10
-E = 0.01  # 0.05, the higher, the more unique rows in data (and lower first PC)
+NUM_LEVELS = 9  # 10
+E = 0.2  # 0.05, the higher, the more unique rows in data (and lower first PC)
 
 PLOT_NUM_ROWS = None
 FIGSIZE = (10, 10)
@@ -90,7 +90,8 @@ word2id = {word: n for n, word in enumerate(vocab)}
 # make data_mat
 data_mat = np.zeros((num_vocab, num_vocab))
 for n in range(num_vocab):
-    data_mat[n] = sample_from_hierarchical_diffusion(NUM_DESCENDANTS, NUM_LEVELS, E)
+    node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+    data_mat[n] = sample_from_hierarchical_diffusion(node0, NUM_DESCENDANTS, NUM_LEVELS, E)
 print(data_mat)
 
 # make random data_mat

@@ -42,7 +42,7 @@ def cluster(data_mat, original_row_words=None, original_col_words=None):
 
 
 def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
-                    method='average', metric='cityblock', verbose=False, plot=True):
+                    method='average', metric='cityblock', verbose=False, plot=False):
     """
     make categories from hierarchically organized data.
     """
@@ -154,7 +154,7 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
 
 
 def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.01,
-              random_interval=np.nan):
+              random_interval=100):
     """
     generate text by adding one word at a time to a list of words.
     each word is constrained by the structure matrices - which are hierarchical -
@@ -184,12 +184,13 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
     # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
     size2word2legals = {}
     for ngram_size in ngram_sizes:
-        structure_mat = ngram2structure_mat[ngram_size]
+        structure_mat = ngram2structure_mat[ngram_size].T  # TODO trnaspose?
         word2legals = {}
         for col_word, col in zip(vocab, structure_mat.T):
             word2legals[col_word] = [w for w, val in zip(vocab, col) if val == word2node0[w]]  # TODO test word2node0
         size2word2legals[ngram_size] = word2legals
     # get one token at a time
+    legal_lengths = []
     tokens = np.random.choice(vocab, size=max_ngram_size).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(num_tokens)
     for loc in range(num_tokens):
@@ -206,6 +207,10 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
                 previous_token = tokens[-size]
                 legals.intersection_update(size2word2legals[size][previous_token])
             # sample uniformly from legals
+            legal_lengths.append(len(legals))
+
+            # print('length of legals={}'.format(len(legals)))  # TODO is this too long to learn any statistics?
+
             try:
                 new_token = np.random.choice(list(legals), size=1).item()
             except ValueError:  # no legals
@@ -215,6 +220,7 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
             tokens.append(new_token)
         pbar.update()
     token_ids = [word2id[w] for w in tokens]
+    print('avg length of legals={}'.format(np.mean(legal_lengths)))
     return vocab, tokens, token_ids, word2id, ngram2structure_mat
 
 
