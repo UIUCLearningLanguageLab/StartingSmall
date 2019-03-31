@@ -79,7 +79,7 @@ def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):
 def check_nans(mat, name='mat'):
     if np.any(np.isnan(mat)):
         num_nans = np.sum(np.isnan(mat))
-        print('Found {} Nans in {}'.format(num_nans, name), 'red')
+        print('Found {} Nans in {}'.format(num_nans, name))
 
 
 def make_gold(hub):

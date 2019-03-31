@@ -2,9 +2,9 @@ import random
 
 
 def sample_from_iterable(iterable, samplesize):
-    '''
+    """
     sample from iterable
-    '''
+    """
     results = []
 
     for i, v in enumerate(iterable):

@@ -1,25 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import linkage, dendrogram
-from scipy.spatial.distance import pdist
 from scipy import stats
 from sklearn.decomposition import PCA
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import pdist
 
-E = 0.001  # the higher, the less variance accounted for by more distant nodes in diffusion process
-NUM_SAMPLES = 1000
+from analysis.hierarchical_data_utils import sample_from_hierarchical_diffusion
+
+E = 0.05  # 0.05, the higher, the more unique rows in data (and lower first PC)
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 4  # 9
-
+NUM_LEVELS = 11  # 10
 
 PLOT_NUM_ROWS = None
 FIGSIZE = (10, 10)
-DPI = 200
-TICKLABEL_FONTSIZE = 20
-AXLABEL_FONTSIZE = 20
-TITLE_FONTSIZE = 10
+DPI = 800
+TICKLABEL_FONTSIZE = 1
+TITLE_FONTSIZE = 5
 
 
-def cluster(mat):
+def cluster(mat, original_row_words=None, original_col_words=None):
     print('Clustering...')
     #
     lnk0 = linkage(pdist(mat))
@@ -28,7 +27,6 @@ def cluster(mat):
                      color_threshold=-1,
                      no_labels=True,
                      no_plot=True)
-
     z = mat[dg0['leaves'], :]  # reorder rows
     #
     lnk1 = linkage(pdist(mat.T))
@@ -39,51 +37,80 @@ def cluster(mat):
                      no_plot=True)
 
     z = z[:, dg1['leaves']]  # reorder cols
-    return z
+    #
+    if original_row_words is None and original_col_words is None:
+        return z
+    else:
+        row_labels = np.array(original_row_words)[dg0['leaves']]
+        col_labels = np.array(original_col_words)[dg1['leaves']]
+        return z, row_labels, col_labels
 
 
-def plot_heatmap(mat, name):
-    fig, ax_heatmap = plt.subplots(figsize=FIGSIZE, dpi=DPI)
+def to_corr_mat(data_mat):
+    zscored = stats.zscore(data_mat, axis=0, ddof=1)
+    res = np.dot(zscored.T, zscored)
+    return res
+
+
+def plot_heatmap(mat, name, ytick_labels=None, xtick_labels=None):
+    fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
     title = 'Cluster Structure of\ndata sampled from hierarchical diffusion process\n' \
-            'with num_samples={} num_descendants={} num_levels={}\n' \
-            '{}'.format(NUM_SAMPLES, NUM_DESCENDANTS, NUM_LEVELS, name)
+            'with num_vocab={} num_descendants={} num_levels={}\n' \
+            '{}'.format(num_vocab, NUM_DESCENDANTS, NUM_LEVELS, name)
     plt.title(title, fontsize=TITLE_FONTSIZE)
     # heatmap
     print('Plotting heatmap...')
-    ax_heatmap.imshow(mat,
-                      aspect='equal',
-                      cmap=plt.get_cmap('jet'),
-                      interpolation='nearest')
+    ax.imshow(mat,
+              aspect='equal',
+              cmap=plt.get_cmap('jet'),
+              interpolation='nearest')
+    # xticks
+    num_cols = len(mat.T)
+    ax.set_xticks(np.arange(num_cols))
+    ax.xaxis.set_ticklabels(xtick_labels, rotation=90, fontsize=TICKLABEL_FONTSIZE)
+    # yticks
+    num_rows = len(mat)
+    ax.set_yticks(np.arange(num_rows))
+    ax.yaxis.set_ticklabels(ytick_labels,   # no need to reverse (because no extent is set)
+                            rotation=0, fontsize=TICKLABEL_FONTSIZE)
+    # remove ticklines
+    lines = (ax.xaxis.get_ticklines() +
+             ax.yaxis.get_ticklines())
+    plt.setp(lines, visible=False)
     plt.show()
 
 
-def sample_using_hierarchical_diffusion(num_levels=NUM_LEVELS, num_descendants=NUM_DESCENDANTS, e=E):
-    node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-    nodes = [node0]
-    for level in range(num_levels):
-        candidate_nodes = nodes * num_descendants
-        nodes = [node if np.random.binomial(n=1, p=1-e) else -node for node in candidate_nodes]
-    return nodes
+# vocab
+num_vocab = NUM_DESCENDANTS ** NUM_LEVELS
+print('num_vocab={}'.format(num_vocab))
+vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
+word2id = {word: n for n, word in enumerate(vocab)}
 
 
 # make data_mat
-data_mat = np.zeros((NUM_SAMPLES, NUM_DESCENDANTS**NUM_LEVELS))
-for n in range(NUM_SAMPLES):
-    data_mat[n] = sample_using_hierarchical_diffusion()
+data_mat = np.zeros((num_vocab, num_vocab))
+for n in range(num_vocab):
+    data_mat[n] = sample_from_hierarchical_diffusion(NUM_DESCENDANTS, NUM_LEVELS, E)
 print(data_mat)
 
 # make random data_mat
-data_mat2 = np.ones((NUM_SAMPLES, NUM_DESCENDANTS**NUM_LEVELS))
+data_mat2 = np.ones((num_vocab, num_vocab))
 data_mat2 = data_mat2 - np.random.randint(0, 2, size=data_mat2.shape) * 2
 
+
 for n, mat in enumerate([data_mat, data_mat2]):
-    zscored = stats.zscore(mat, axis=0, ddof=1)
-    corr_z = np.dot(zscored.T, zscored)
+    # check unique
+    unique_mat = np.unique(mat, axis=0)
+    assert len(unique_mat) == len(mat)
+    # corr_mat
+    corr_mat = to_corr_mat(mat)
+    clustered_corr_mat, row_words, col_words = cluster(corr_mat, vocab, vocab)
     # plot
     n = str(n)
     # plot_heatmap(mat, 'raw data' + n)
-    plot_heatmap(cluster(corr_z), 'clustered correlations z' + n)
+    plot_heatmap(clustered_corr_mat, 'clustered correlations' + n, row_words, col_words)
     # pca
     pca = PCA()
     fitter = pca.fit_transform(mat)
     print(['{:.4f}'.format(i) for i in pca.explained_variance_ratio_][:10])
+    break

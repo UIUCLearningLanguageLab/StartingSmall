@@ -8,8 +8,8 @@ class RNN:
     def __init__(self,
                  input_size,
                  rnn_type='srn',
-                 hidden_size=512,
-                 epochs=20,
+                 num_hiddens=512,
+                 num_epochs=20,
                  num_eval_steps=1,
                  learning_rate=(0.01, 0.00, 20),
                  optimization='adagrad',
@@ -25,8 +25,8 @@ class RNN:
         self.pad_id = 0
         # rnn
         self.rnn_type = rnn_type
-        self.hidden_size = hidden_size
-        self.epochs = epochs
+        self.num_hiddens = num_hiddens
+        self.num_epochs = num_epochs
         self.num_eval_steps = num_eval_steps
         self.dropout_prob = dropout_prob
         self.num_layers = num_layers
@@ -38,7 +38,7 @@ class RNN:
         self.optimization = optimization
         self.init_range = init_range
         #
-        self.model = TorchRNN(self.rnn_type, self.num_layers, self.input_size, self.hidden_size, self.init_range)
+        self.model = TorchRNN(self.rnn_type, self.num_layers, self.input_size, self.num_hiddens, self.init_range)
         self.criterion = torch.nn.CrossEntropyLoss()
         if self.optimization == 'adagrad':
             self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.learning_rate[0])
@@ -52,7 +52,7 @@ class RNN:
         decay = self.learning_rate[1]
         num_epochs_without_decay = self.learning_rate[2]
         # epochs
-        for epoch in range(self.epochs):
+        for epoch in range(self.num_epochs):
             # train
             lr_decay = decay ** max(epoch - num_epochs_without_decay, 0)
             lr = lr * lr_decay  # decay lr if it is time
