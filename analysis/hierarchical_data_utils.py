@@ -41,33 +41,8 @@ def cluster(data_mat, original_row_words=None, original_col_words=None):
         return z, row_labels, col_labels
 
 
-def fancy_dendrogram(*args, **kwargs):
-    max_d = kwargs.pop('max_d', None)
-    if max_d and 'color_threshold' not in kwargs:
-        kwargs['color_threshold'] = max_d
-    annotate_above = kwargs.pop('annotate_above', 0)
-
-    plt.figure(figsize=(25, 10))
-    ddata = dendrogram(*args, **kwargs)
-
-    plt.title('Hierarchical Clustering Dendrogram (truncated)')
-    plt.xlabel('sample index or (cluster size)')
-    plt.ylabel('distance')
-    for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
-        x = 0.5 * sum(i[1:3])
-        y = d[1]
-        if y > annotate_above:
-            plt.plot(x, y, 'o', c=c)
-            plt.annotate('{}'.format(int(y)), (x, y), xytext=(0, -5),
-                         textcoords='offset points',
-                         va='top', ha='center')
-    if max_d:
-        plt.axhline(y=max_d, c='k')
-    return ddata
-
-
 def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
-                    method='average', metric='cityblock', verbose=True, plot=False):
+                    method='average', metric='cityblock', verbose=True, plot=True):
     """
     make categories from hierarchically organized data.
     """
@@ -86,13 +61,13 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
         except IndexError:  # idx does not refer to leaf node (it refers to cluster)
             new_node_id1 = z[node_id.astype(int) - len(vocab)][0]
             new_node_id2 = z[node_id.astype(int) - len(vocab)][1]
-            if new_node_id1 not in visited_node_ids:
+            if new_node_id1 not in visited:
                 get_all_probes_in_tree(res, visited, z, new_node_id1)
-            if new_node_id2 not in visited_node_ids:
+            if new_node_id2 not in visited:
                 get_all_probes_in_tree(res, visited, z, new_node_id2)
         else:
             res.append(p)
-            visited_node_ids.append(node_id)
+            visited.append(node_id)
 
     # define categories
     assert num_members <= thr  # a larger thr defines categories higher up in hierarchical tree
@@ -124,15 +99,46 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
                 print(probe_cats)
                 print()
 
-    fancy_dendrogram(
-        z,
-        leaf_rotation=90.,
-        leaf_font_size=12.,
-        show_contracted=True,
-        annotate_above=10,  # useful in small plots so annotations don't overlap
-    )
     if plot:
-        plt.show()  # TODO annotate which nodes are part of which category
+
+        def fancy_dendrogram(*args, **kwargs):
+            max_d = kwargs.pop('max_d', None)
+            if max_d and 'color_threshold' not in kwargs:
+                kwargs['color_threshold'] = max_d
+            annotate_above = kwargs.pop('annotate_above', 0)
+
+            fig, ax = plt.subplots(figsize=(25, 10))
+            ddata = dendrogram(ax=ax, *args, **kwargs)
+
+            reordered_vocab = np.asarray(vocab)[ddata['leaves']]
+
+            print(len(vocab), len(probes))
+            ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab])  # TODO test
+
+            plt.title('Hierarchical Clustering Dendrogram (truncated)')
+            plt.xlabel('sample index or (cluster size)')
+            plt.ylabel('distance')
+            for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
+                x = 0.5 * sum(i[1:3])
+                y = d[1]
+                if y > annotate_above:
+                    plt.plot(x, y, 'o', c=c)
+                    plt.annotate('{}'.format(int(y)), (x, y), xytext=(0, -5),
+                                 textcoords='offset points',
+                                 va='top', ha='center')
+            if max_d:
+                plt.axhline(y=max_d, c='k')
+            return ddata
+
+        fancy_dendrogram(
+            z,
+            leaf_label_func=None,  # TODO test
+            leaf_rotation=90.,
+            leaf_font_size=12.,
+            show_contracted=True,
+            annotate_above=10,  # useful in small plots so annotations don't overlap
+        )
+        plt.show()
 
     assert len(probes) == num_members * num_cats
     return probes, probe2cat

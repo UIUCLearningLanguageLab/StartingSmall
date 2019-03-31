@@ -2,30 +2,53 @@ from cytoolz import itertoolz
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from collections import Counter
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
+DEVELOPING = True
 
-NUM_TOKENS = 1 * 10 ** 5  # TODO 6 might overload RAM
-MAX_NGRAM_SIZE = 1
-NUM_DESCENDANTS = 2  # use as num_cats
-NUM_LEVELS = 8
-E = 0.2
+NUM_TOKENS = 1 * 10 ** 5
+MAX_NGRAM_SIZE = 1  # TODO might overload RAM
+NUM_DESCENDANTS = 2  # 2
+NUM_LEVELS = 7  # 12
+E = 0.2  # 0.2
 
 MB_SIZE = 64
 LEARNING_RATE = (0.01, 0.00, 20)
 NUM_EPOCHS = 10
-NUM_HIDDENS = 128
-BPTT = MAX_NGRAM_SIZE
-CALC_PP = False
+NUM_HIDDENS = 512
+BPTT = 1
+CALC_PP = True
 
-NUM_CATS = 10
-NUM_CAT_MEMBERS = 5
-THRESHOLDS = [5, 10]
+NUM_CATS = 2
+NUM_CAT_MEMBERS = 30
+THRESHOLDS = [30, 60]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 1
 SENTENCE_LEN = 64  # TODO this destroys hierarchical structure but is necessary to ensure all types occur in tokens
+
+
+def plot_ba_trajs(d):
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Balanced Accuracy')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(axis='both', which='both', top=False, right=False)
+    ax.yaxis.grid(True)
+    ax.set_ylim([0.5, 1.0])
+    # plot
+    num_summaries = len(d)
+    palette = iter(sns.color_palette('hls', num_summaries))
+    for thr, bas in d.items():
+        ax.plot(bas, '-', color=next(palette),
+                label='thr={}'.format(thr))
+    plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
+    plt.tight_layout()
+    plt.show()
 
 
 # make tokens with hierarchical n-gram structure
@@ -54,17 +77,19 @@ for seq in itertoolz.partition_all(MB_SIZE, token_ids):  # a seq contains 64 tok
 print('num sequences={}'.format(len(train_seqs)))
 
 # train + eval
+thr2bas = {thr: [] for thr in THRESHOLDS}
 for thr in THRESHOLDS:
     # categories
-    print('Making categories with thr={}'.format(thr))
+    print('Making {} categories with num_members={} and thr={}...'.format(NUM_CATS, NUM_CAT_MEMBERS, thr))
     structure_mat = ngram2structure_mat[NGRAM_SIZE_FOR_CAT]  # TODO concatenate all?
-    probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr, verbose=True)
+    probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr)
     c = Counter(tokens)
     for p in probes:
         assert c[p] > MIN_PROBE_FREQ
     print('Collected {} probes'.format(len(probes)))
+    if DEVELOPING:
+        continue
     # check probe sim
-    assert len(structure_mat) == len(word2id)
     probe_acts1 = structure_mat[[word2id[p] for p in probes], :]
     ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
     probe_acts2 = structure_mat[:, [word2id[p] for p in probes]].T
@@ -96,6 +121,8 @@ for thr in THRESHOLDS:
         srn.train_epoch(train_seqs, lr, verbose=False)
         #
         print('epoch={:>2}/{:>2} | pp={:>5} ba={:.3f}'.format(epoch, srn.num_epochs, int(pp), ba))
+        thr2bas[thr].append(ba)
     print()
 
-
+if not DEVELOPING:
+    plot_ba_trajs(thr2bas)
