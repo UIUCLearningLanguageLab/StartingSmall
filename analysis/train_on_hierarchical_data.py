@@ -8,27 +8,26 @@ import seaborn as sns
 from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
-DEVELOPING = True
+DEVELOPING = False
 
 NUM_TOKENS = 1 * 10 ** 5
 MAX_NGRAM_SIZE = 1  # TODO might overload RAM
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 7  # 12
+NUM_LEVELS = 9  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
 LEARNING_RATE = (0.01, 0.00, 20)
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 NUM_HIDDENS = 512
-BPTT = 1
-CALC_PP = True
+BPTT = MAX_NGRAM_SIZE
+CALC_PP = True  # must set to False if train_seqs to big to calc pp in one batch
 
 NUM_CATS = 2
-NUM_CAT_MEMBERS = 30
-THRESHOLDS = [30, 60]
+NUM_CAT_MEMBERS = 50
+THRESHOLDS = [200, 50]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
-MIN_PROBE_FREQ = 1
-SENTENCE_LEN = 64  # TODO this destroys hierarchical structure but is necessary to ensure all types occur in tokens
+MIN_PROBE_FREQ = 5
 
 
 def plot_ba_trajs(d):
@@ -53,7 +52,7 @@ def plot_ba_trajs(d):
 
 # make tokens with hierarchical n-gram structure
 vocab, tokens, token_ids, word2id, ngram2structure_mat = make_data(
-    NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E, sentence_len=SENTENCE_LEN)
+    NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
 print()
@@ -71,7 +70,7 @@ print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity 
 
 # train_seqs
 train_seqs = []
-for seq in itertoolz.partition_all(MB_SIZE, token_ids):  # a seq contains 64 token_ids
+for seq in itertoolz.partition_all(MB_SIZE, token_ids):  # a seq contains MB_SIZE token_ids
     if len(seq) == MB_SIZE:
         train_seqs.append(list(seq))  # need to convert tuple to list
 print('num sequences={}'.format(len(train_seqs)))
@@ -85,6 +84,7 @@ for thr in THRESHOLDS:
     probes, probe2cat = make_probe_data(structure_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr)
     c = Counter(tokens)
     for p in probes:
+        print(p, c[p])  # TODO check for bimodality - half of probes are never systematically predicted
         assert c[p] > MIN_PROBE_FREQ
     print('Collected {} probes'.format(len(probes)))
     if DEVELOPING:

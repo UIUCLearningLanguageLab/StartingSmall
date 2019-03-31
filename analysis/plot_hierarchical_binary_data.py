@@ -7,9 +7,9 @@ from scipy.spatial.distance import pdist
 
 from analysis.hierarchical_data_utils import sample_from_hierarchical_diffusion
 
-E = 0.05  # 0.05, the higher, the more unique rows in data (and lower first PC)
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 11  # 10
+NUM_LEVELS = 8  # 10
+E = 0.01  # 0.05, the higher, the more unique rows in data (and lower first PC)
 
 PLOT_NUM_ROWS = None
 FIGSIZE = (10, 10)
@@ -52,7 +52,7 @@ def to_corr_mat(data_mat):
     return res
 
 
-def plot_heatmap(mat, name, ytick_labels=None, xtick_labels=None):
+def plot_heatmap(mat, name, ytick_labels, xtick_labels):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
     title = 'Cluster Structure of\ndata sampled from hierarchical diffusion process\n' \
             'with num_vocab={} num_descendants={} num_levels={}\n' \
@@ -101,13 +101,13 @@ data_mat2 = data_mat2 - np.random.randint(0, 2, size=data_mat2.shape) * 2
 for n, mat in enumerate([data_mat, data_mat2]):
     # check unique
     unique_mat = np.unique(mat, axis=0)
-    assert len(unique_mat) == len(mat)
+    # assert len(unique_mat) == len(mat)
     # corr_mat
     corr_mat = to_corr_mat(mat)
     clustered_corr_mat, row_words, col_words = cluster(corr_mat, vocab, vocab)
     # plot
     n = str(n)
-    # plot_heatmap(mat, 'raw data' + n)
+    plot_heatmap(mat, 'raw data' + n, [], [])
     plot_heatmap(clustered_corr_mat, 'clustered correlations' + n, row_words, col_words)
     # pca
     pca = PCA()

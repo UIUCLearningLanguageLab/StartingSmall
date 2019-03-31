@@ -42,7 +42,7 @@ def cluster(data_mat, original_row_words=None, original_col_words=None):
 
 
 def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
-                    method='average', metric='cityblock', verbose=True, plot=True):
+                    method='average', metric='cityblock', verbose=False, plot=True):
     """
     make categories from hierarchically organized data.
     """
@@ -107,13 +107,12 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
                 kwargs['color_threshold'] = max_d
             annotate_above = kwargs.pop('annotate_above', 0)
 
-            fig, ax = plt.subplots(figsize=(25, 10))
+            fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
             ddata = dendrogram(ax=ax, *args, **kwargs)
 
+            # label only probes
             reordered_vocab = np.asarray(vocab)[ddata['leaves']]
-
-            print(len(vocab), len(probes))
-            ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab])  # TODO test
+            ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=5)
 
             plt.title('Hierarchical Clustering Dendrogram (truncated)')
             plt.xlabel('sample index or (cluster size)')
@@ -132,7 +131,6 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
 
         fancy_dendrogram(
             z,
-            leaf_label_func=None,  # TODO test
             leaf_rotation=90.,
             leaf_font_size=12.,
             show_contracted=True,
@@ -144,10 +142,9 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
     return probes, probe2cat
 
 
-def sample_from_hierarchical_diffusion(num_descendants, num_levels, e):
+def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     """the higher the change probability (e),
      the less variance accounted for by more distant nodes in diffusion process"""
-    node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
     nodes = [node0]
     for level in range(num_levels):
         candidate_nodes = nodes * num_descendants
@@ -157,7 +154,7 @@ def sample_from_hierarchical_diffusion(num_descendants, num_levels, e):
 
 
 def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.01,
-              sentence_len=7, num_sent_starters=None):
+              random_interval=np.nan):
     """
     generate text by adding one word at a time to a list of words.
     each word is constrained by the structure matrices - which are hierarchical -
@@ -174,29 +171,31 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
     word2id = {word: n for n, word in enumerate(vocab)}
     # ngram2structure_mat - col words are features that predict row words
     ngram_sizes = range(1, max_ngram_size + 1)
+    word2node0 = {}
     ngram2structure_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
     for ngram_size in ngram_sizes:
         print('Making structure_mat with ngram_size={}...'.format(ngram_size))
-        for row_id in range(num_vocab):
+        for row_id, word in enumerate(vocab):
+            node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+            word2node0[word] = node0
             ngram2structure_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
-                num_descendants, num_levels, e)
+                node0, num_descendants, num_levels, e)
     # collect legal next words for each word at each distance - do this once to speed calculation of tokens
+    # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
     size2word2legals = {}
     for ngram_size in ngram_sizes:
         structure_mat = ngram2structure_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, structure_mat.T):
-            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == 1]
+            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == word2node0[w]]  # TODO test word2node0
         size2word2legals[ngram_size] = word2legals
     # get one token at a time
-    num_sent_starters = num_vocab if num_sent_starters is None else num_sent_starters
-    sentence_starters = np.random.choice(vocab, size=num_sent_starters, replace=False)
-    tokens = np.random.choice(sentence_starters, size=max_ngram_size).tolist()  # prevents indexError at start
+    tokens = np.random.choice(vocab, size=max_ngram_size).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(num_tokens)
-    for loc in range(num_tokens):  # TODO this is way too slow for 5M words - multiprocessing
+    for loc in range(num_tokens):
         # append random word to break structure into pseudo-sentences
-        if loc % sentence_len == 0:
-            new_token = np.random.choice(sentence_starters, size=1).item()
+        if loc % random_interval == 0:
+            new_token = np.random.choice(vocab, size=1).item()
             tokens.append(new_token)
             continue
         # append word which is constrained by hierarchical structure
