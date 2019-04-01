@@ -42,7 +42,7 @@ def cluster(data_mat, original_row_words=None, original_col_words=None):
 
 
 def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
-                    method='average', metric='cityblock', verbose=False, plot=False):
+                    method='average', metric='cityblock', verbose=False, plot=True):
     """
     make categories from hierarchically organized data.
     """
@@ -114,9 +114,9 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
             reordered_vocab = np.asarray(vocab)[ddata['leaves']]
             ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=5)
 
-            plt.title('Hierarchical Clustering Dendrogram (truncated)')
-            plt.xlabel('sample index or (cluster size)')
-            plt.ylabel('distance')
+            plt.title('Hierarchical Clustering Dendrogram')
+            plt.xlabel('words in vocab (only probes are shown)')
+            plt.ylabel('{} distance'.format(metric))
             for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
                 x = 0.5 * sum(i[1:3])
                 y = d[1]
@@ -154,13 +154,13 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
 
 
 def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.01,
-              random_interval=100):
+              random_interval=np.nan):
     """
     generate text by adding one word at a time to a list of words.
-    each word is constrained by the structure matrices - which are hierarchical -
-    and determine the legal successors for each word in teh vocabulary.
-    there is one structure matrix for each ngram (in other words, for each distance up to MAX_NGRAM_SIZE)
-    the set of legal words that can follow a word is the intersection of legal words dictated by each structure matrix
+    each word is constrained by the legals matrices - which are hierarchical -
+    and determine the legal successors for each word in the vocabulary.
+    there is one legal matrix for each ngram (in other words, for each distance up to MAX_NGRAM_SIZE)
+    the set of legal words that can follow a word is the intersection of legal words dictated by each legals matrix.
     the size of the intersection is approximately the same for each word, and a word is sampled uniformly from this set
     the size of the intersection is the best possible perplexity a model can achieve,
     because perplexity indicates the number of choices from a random uniformly distributed set of choices
@@ -169,25 +169,25 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
     num_vocab = num_descendants ** num_levels
     vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
     word2id = {word: n for n, word in enumerate(vocab)}
-    # ngram2structure_mat - col words are features that predict row words
+    # ngram2legals_mat - each row specifies legal next words (col_words)
     ngram_sizes = range(1, max_ngram_size + 1)
     word2node0 = {}
-    ngram2structure_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
+    ngram2slegals_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
     for ngram_size in ngram_sizes:
-        print('Making structure_mat with ngram_size={}...'.format(ngram_size))
+        print('Making legals_mat with ngram_size={}...'.format(ngram_size))
         for row_id, word in enumerate(vocab):
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
             word2node0[word] = node0
-            ngram2structure_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
+            ngram2slegals_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
                 node0, num_descendants, num_levels, e)
     # collect legal next words for each word at each distance - do this once to speed calculation of tokens
     # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
     size2word2legals = {}
     for ngram_size in ngram_sizes:
-        structure_mat = ngram2structure_mat[ngram_size].T  # TODO trnaspose?
+        legals_mat = ngram2slegals_mat[ngram_size]  # this must be transposed
         word2legals = {}
-        for col_word, col in zip(vocab, structure_mat.T):
-            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == word2node0[w]]  # TODO test word2node0
+        for row_word, row in zip(vocab, legals_mat):
+            word2legals[row_word] = [w for w, val in zip(vocab, row) if val == word2node0[w]]
         size2word2legals[ngram_size] = word2legals
     # get one token at a time
     legal_lengths = []
@@ -221,7 +221,7 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
         pbar.update()
     token_ids = [word2id[w] for w in tokens]
     print('avg length of legals={}'.format(np.mean(legal_lengths)))
-    return vocab, tokens, token_ids, word2id, ngram2structure_mat
+    return vocab, tokens, token_ids, word2id, ngram2slegals_mat
 
 
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
