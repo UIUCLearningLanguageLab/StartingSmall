@@ -41,7 +41,7 @@ def cluster(data_mat, original_row_words=None, original_col_words=None):
         return z, row_labels, col_labels
 
 
-def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
+def make_probe_data(data_mat, vocab, num_cats, num_members, thr, use_all_leaf_nodes=False,
                     method='average', metric='cityblock', verbose=False, plot=True):
     """
     make categories from hierarchically organized data.
@@ -53,7 +53,7 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
     # Z[i] will tell us which clusters were merged in the i-th iteration
     z = linkage(data_mat, method, metric)
     c, _ = cophenet(z, pdist(data_mat, metric))
-    assert c > 0.8
+    assert c > 0.0
 
     def get_all_probes_in_tree(res, visited, z, node_id):
         try:
@@ -87,9 +87,12 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
             get_all_probes_in_tree(probes_in_cluster, visited_node_ids, z, idx1)  # populates probes_in_cluster
             get_all_probes_in_tree(probes_in_cluster, visited_node_ids, z, idx2)  # populates probes_in_cluster
             if len(probes_in_cluster) < num_members:
-                continue  # not enough leaf nodes below nodes idx1 and idx2
+                continue  # some leaf nodes might be used by another category
             #
-            probe_cats = np.random.choice(probes_in_cluster, size=num_members, replace=False)
+            if use_all_leaf_nodes:
+                probe_cats = probes_in_cluster
+            else:
+                probe_cats = np.random.choice(probes_in_cluster, size=num_members, replace=False)
             probes.extend(probe_cats)
             probe2cat.update({p: cat_id for p in probe_cats})
             cat_id += 1
@@ -102,9 +105,6 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
     if plot:
 
         def fancy_dendrogram(*args, **kwargs):
-            max_d = kwargs.pop('max_d', None)
-            if max_d and 'color_threshold' not in kwargs:
-                kwargs['color_threshold'] = max_d
             annotate_above = kwargs.pop('annotate_above', 0)
 
             fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
@@ -114,7 +114,8 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
             reordered_vocab = np.asarray(vocab)[ddata['leaves']]
             ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=5)
 
-            plt.title('Hierarchical Clustering Dendrogram')
+            plt.title('Hierarchical Clustering Dendrogram\n'
+                      'num_cats={}, num_members={}, thr={} '.format(num_cats, num_members, thr), fontsize=20)
             plt.xlabel('words in vocab (only probes are shown)')
             plt.ylabel('{} distance'.format(metric))
             for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
@@ -125,20 +126,17 @@ def make_probe_data(data_mat, vocab, num_cats, num_members, thr,
                     plt.annotate('{}'.format(int(y)), (x, y), xytext=(0, -5),
                                  textcoords='offset points',
                                  va='top', ha='center')
-            if max_d:
-                plt.axhline(y=max_d, c='k')
-            return ddata
 
         fancy_dendrogram(
             z,
             leaf_rotation=90.,
             leaf_font_size=12.,
             show_contracted=True,
-            annotate_above=10,  # useful in small plots so annotations don't overlap
+            annotate_above=num_vocab,  # useful in small plots so annotations don't overlap
         )
         plt.show()
-
-    assert len(probes) == num_members * num_cats
+    if not use_all_leaf_nodes:
+        assert len(probes) == num_members * num_cats
     return probes, probe2cat
 
 

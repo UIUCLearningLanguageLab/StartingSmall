@@ -9,28 +9,30 @@ from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
 
-NUM_TOKENS = 1 * 10 ** 5
+NUM_TOKENS = 1 * 10 ** 6  # must be at least 1M to get good ba with 30 categories
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 9  # 12
+NUM_LEVELS = 12  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
 LEARNING_RATE = (0.1, 0.00, 20)
-NUM_EPOCHS = 20  # 10
+NUM_EPOCHS = 5  # 10
 NUM_HIDDENS = 512
 BPTT = MAX_NGRAM_SIZE
 CALC_PP = True  # must set to False if train_seqs to big to calc pp in one batch
 
-NUM_CATS = 2
-NUM_CAT_MEMBERS = 50
-THRESHOLDS = [200, 50]
+NUM_CATS = 30
+NUM_CAT_MEMBERS = 20
+USE_ALL_LEAF_NODES = True
+THRESHOLDS = [20, 40, 160, 320]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
-MIN_PROBE_FREQ = 5
+MIN_PROBE_FREQ = 10
 
 
-def plot_ba_trajs(d):
+def plot_ba_trajs(d, title):
     fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
+    plt.title(title)
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Balanced Accuracy')
     ax.spines['right'].set_visible(False)
@@ -41,7 +43,7 @@ def plot_ba_trajs(d):
     # plot
     num_summaries = len(d)
     palette = iter(sns.color_palette('hls', num_summaries))
-    for thr, bas in d.items():
+    for thr, bas in sorted(d.items(), key=lambda i: i[0]):
         ax.plot(bas, '-', color=next(palette),
                 label='thr={}'.format(thr))
     plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
@@ -78,11 +80,13 @@ for thr in THRESHOLDS:
     # categories
     print('Making {} categories with num_members={} and thr={}...'.format(NUM_CATS, NUM_CAT_MEMBERS, thr))
     legals_mat = ngram2legals_mat[NGRAM_SIZE_FOR_CAT]
-    probes, probe2cat = make_probe_data(legals_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr, verbose=False, plot=True)
+    probes, probe2cat = make_probe_data(legals_mat, vocab, NUM_CATS, NUM_CAT_MEMBERS, thr,
+                                        use_all_leaf_nodes=USE_ALL_LEAF_NODES, verbose=False, plot=True)
     c = Counter(tokens)
     for p in probes:
         # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bimodality
-        assert c[p] > MIN_PROBE_FREQ
+        if c[p] < MIN_PROBE_FREQ:
+            print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
     print('Collected {} probes'.format(len(probes)))
     # check probe sim
     probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
@@ -107,7 +111,7 @@ for thr in THRESHOLDS:
         # perplexity
         pp = srn.calc_seqs_pp(train_seqs[:10]) if CALC_PP else 0
         # ba
-        wx = srn.get_wx()  # TODO retrieve hidden states instead?
+        wx = srn.get_wx()  # TODO also test wy
         p_acts = np.asarray([wx[word2id[p], :] for p in probes])
         ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
         # train
@@ -119,4 +123,5 @@ for thr in THRESHOLDS:
         thr2bas[thr].append(ba)
     print()
 
-plot_ba_trajs(thr2bas)
+plot_ba_trajs(thr2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
+    NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E))
