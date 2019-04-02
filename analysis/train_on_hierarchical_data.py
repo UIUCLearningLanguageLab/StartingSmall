@@ -5,18 +5,18 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba, to_corr_mat
+from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
 
-NUM_TOKENS = 1 * 10 ** 6  # must be at least 1M to get good ba with 30 categories
+NUM_TOKENS = 1 * 10 ** 5  # must be at least 1M to get good ba with 30 categories
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 10  # 12
+NUM_LEVELS = 10  # 12  # TODO works with 10
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO
+LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO works with 0.01
 NUM_EPOCHS = 10  # 10
 NUM_HIDDENS = 512
 BPTT = MAX_NGRAM_SIZE
@@ -39,8 +39,8 @@ def plot_ba_trajs(d, title):
     ax.yaxis.grid(True)
     ax.set_ylim([0.5, 1.0])
     # plot
-    num_summaries = len(d)
-    palette = iter(sns.color_palette('hls', num_summaries))
+    num_trajs = len(d)
+    palette = iter(sns.color_palette('hls', num_trajs))
     for num_cats, bas in sorted(d.items(), key=lambda i: i[0]):
         ax.plot(bas, '-', color=next(palette),
                 label='num_cats={}'.format(num_cats))

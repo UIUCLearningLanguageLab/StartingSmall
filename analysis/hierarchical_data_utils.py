@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 from cytoolz import itertoolz
 from scipy.spatial.distance import pdist
-import seaborn as sns
+from matplotlib.colors import to_hex
 
 
 def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
@@ -17,7 +17,7 @@ def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
     return res
 
 
-def get_all_probes_in_tree(vocab, res1, probe2node_id, z, node_id):
+def get_all_probes_in_tree(vocab, res1, z, node_id):
     """
     # z should be the result of linkage,which returns an array of length n - 1
     # giving you information about the n - 1 cluster merges which it needs to pairwise merge n clusters.
@@ -30,11 +30,10 @@ def get_all_probes_in_tree(vocab, res1, probe2node_id, z, node_id):
     except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
         new_node_id1 = z[node_id.astype(int) - len(vocab)][0]
         new_node_id2 = z[node_id.astype(int) - len(vocab)][1]
-        get_all_probes_in_tree(vocab, res1, probe2node_id, z, new_node_id1)
-        get_all_probes_in_tree(vocab, res1, probe2node_id, z, new_node_id2)
+        get_all_probes_in_tree(vocab, res1, z, new_node_id1)
+        get_all_probes_in_tree(vocab, res1, z, new_node_id2)
     else:
         res1.append(p)
-        probe2node_id[p] = node_id.astype(int)
 
 
 def make_probe_data(data_mat, vocab, num_cats, parent_count,
@@ -52,7 +51,7 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
     # get z
     corr_mat = to_corr_mat(data_mat)
     z = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise result is messy
-    # find idx where count == parent_count
+    # find cluster (identified by idx1 and idx2) with parent_count nodes beneath it
     for row in z:
         idx1, idx2, dist, count = row
         if count == parent_count:
@@ -61,44 +60,57 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
         raise RuntimeError('Did not find any cluster with count={}'.format(parent_count))
     # get probes - tree structure is preserved in order of how probes are retrieved from tree
     retrieved_probes = []
-    probe2node_id = {}
     for idx in [idx1, idx2]:
-        get_all_probes_in_tree(vocab, retrieved_probes, probe2node_id, z, idx)
+        get_all_probes_in_tree(vocab, retrieved_probes, z, idx)
     # split into categories
     probe2cat = {}
     probes = []
     cat_probes_list = []
+    node_id2color = {int(i): 'black' for i in range(len(z) * 2 + 2)}  # all non-probes should be colored black
+
+    print(node_id2color)
+
+    print(num_vocab)
+    print(len(z))
+    print(len(z) * 2)
+
+
+    cmap = plt.cm.get_cmap('hsv', num_cats)
     for cat_id, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
         assert len(cat_probes) == num_members
         probe2cat.update({p: cat_id for p in cat_probes})
         probes.extend(cat_probes)
         print('cat_id={} num probes in cat={}'.format(cat_id, len(cat_probes)))
         cat_probes_list.append(cat_probes)
+        #
+        for node_id in [word2id[p] for p in cat_probes]:  # word2id can map a probe to its node_id
+            node_id2color[node_id] = cmap(cat_id)
+            # print(node_id, to_hex(cmap(cat_id)))  # TODO tes
     #
     if plot:
+        colors_it = iter([cmap(i) for i in range(num_cats)])  # TODO why does this not work?
+        colors_it = iter(['r', 'g', 'b', 'y'])
         fig, ax = plt.subplots(figsize=(40, 10), dpi=400)
-        dg = dendrogram(z, ax=ax, color_threshold=-1)  # TODO use color to label categories
+        dg = dendrogram(z, ax=ax, color_threshold=-1, link_color_func=lambda i: node_id2color[i])  # TODO test link_color_func
         reordered_vocab = np.asarray(vocab)[dg['leaves']]
-        ax.set_xticklabels(['{} {} {}'.format(w, probe2node_id[w], word2id[w]) if w in probes else ''
-                            for w in reordered_vocab], fontsize=2)
-        palette = iter(sns.color_palette('hls', num_cats))
+        ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=2)
         for cat_probes in cat_probes_list:
-            color = next(palette)
+            color = next(colors_it)
             for i in range(num_vocab):
                 if reordered_vocab[i] in cat_probes:
                     ax.get_xticklabels()[i].set_color(color)
         plt.show()
         #
-        clustered_corr_mat = corr_mat[dg['leaves'], :]
-        clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
-        plot_heatmap(clustered_corr_mat, [], [], dpi=None)
-        plot_heatmap(cluster(data_mat), [], [], dpi=None)
+        # clustered_corr_mat = corr_mat[dg['leaves'], :]
+        # clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
+        # plot_heatmap(clustered_corr_mat, [], [], dpi=None)
+        # plot_heatmap(cluster(data_mat), [], [], dpi=None)
     return probes, probe2cat
 
 
 def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     """the higher the change probability (e),
-     the less variance accounted for by more distant nodes in diffusion process"""
+     the less variance accounted for by higher-up nodes"""
     nodes = [node0]
     for level in range(num_levels):
         candidate_nodes = nodes * num_descendants
