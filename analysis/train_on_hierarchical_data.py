@@ -114,7 +114,7 @@ num_epochs_without_decay = srn.learning_rate[2]
 num_cats2bas = {num_cats: [] for num_cats in NUM_CATS_LIST}
 for epoch in range(srn.num_epochs):
     # perplexity
-    pp = srn.calc_seqs_pp(train_seqs[:NUM_PP_SEQS])
+    pp = srn.calc_seqs_pp(train_seqs[:NUM_PP_SEQS])  # TODO calc pp on all seqs
     # ba
     for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
         wx = srn.get_wx()  # TODO also test wy
@@ -128,7 +128,6 @@ for epoch in range(srn.num_epochs):
     srn.train_epoch(train_seqs, lr, verbose=False)
     #
     print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
-
-
-plot_ba_trajs(num_cats2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
-    NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E))
+    #
+    plot_ba_trajs(num_cats2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
+        NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E))
