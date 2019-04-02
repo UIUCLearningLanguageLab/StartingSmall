@@ -12,17 +12,17 @@ from analysis.rnn import RNN
 NUM_TOKENS = 1 * 10 ** 5  # must be at least 1M to get good ba with 30 categories
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 10  # 12  # TODO works with 10
+NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO works with 0.01
+LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO
 NUM_EPOCHS = 10  # 10
-NUM_HIDDENS = 512
+NUM_HIDDENS = 128
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
 
-PARENT_COUNT = 1024  # exact size of single parent cluster
+PARENT_COUNT = 256  # exact size of single parent cluster
 NUM_CATS_LIST = [2]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 10
