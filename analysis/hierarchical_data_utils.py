@@ -137,7 +137,7 @@ def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, zip
             for size, word2legals in size2word2legals_.items():
                 previous_token = tokens_chunk[-size]
                 legals.intersection_update(word2legals[previous_token])
-            # sample uniformly from legals
+            # sample from legals
             try:
                 new_token = sample_once_from_zipfian(list(legals), zipf_a)
             except ValueError:  # no legals

@@ -14,7 +14,7 @@ MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
-ZIPF_A = 2  # TODO test
+ZIPF_A = 2  # TODO closer to 1.0 will favor higher numbers and thus default to random uniform more often
 
 MB_SIZE = 64
 LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast  # TODO
