@@ -9,27 +9,23 @@ from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
 
-NUM_TOKENS = 1 * 10 ** 6  # must be at least 1M to get good ba with 30 categories
+NUM_TOKENS = 1 * 10 ** 5  # must be at least 1M to get good ba with 30 categories
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 12  # 12
+NUM_LEVELS = 10  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.01, 0.00, 20)
+LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast
 NUM_EPOCHS = 10  # 10
 NUM_HIDDENS = 512
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
 
-NUM_CATS = 2
-MIN_COUNT = 1024  # size of smallest cluster to consider
-NUM_MEMBERS_LIST = [40, 80, 160, 640, 1024]
+PARENT_COUNT = 1024  # exact size of single parent cluster
+NUM_CATS_LIST = [2, 4]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 10
-
-# vocabulary must be large enough to contain NUM_CATS trees of size MIN_COUNT
-assert NUM_CATS * MIN_COUNT <= NUM_DESCENDANTS ** NUM_LEVELS
 
 
 def plot_ba_trajs(d, title):
@@ -45,9 +41,9 @@ def plot_ba_trajs(d, title):
     # plot
     num_summaries = len(d)
     palette = iter(sns.color_palette('hls', num_summaries))
-    for num_members, bas in sorted(d.items(), key=lambda i: i[0]):
+    for num_cats, bas in sorted(d.items(), key=lambda i: i[0]):
         ax.plot(bas, '-', color=next(palette),
-                label='num_members={}'.format(num_members))
+                label='num_cats={}'.format(num_cats))
     plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
     plt.tight_layout()
     plt.show()
@@ -79,17 +75,17 @@ for seq in itertoolz.partition_all(MB_SIZE, token_ids):  # a seq contains MB_SIZ
 print('num sequences={}'.format(len(train_seqs)))
 
 
-# categories
-num_members2probes_data = {}
-for num_members in NUM_MEMBERS_LIST:
-    print('Getting {} categories with num_members={} and MIN_COUNT={}...'.format(NUM_CATS, num_members, MIN_COUNT))
+# probes_data
+num_cats2probes_data = {}
+for num_cats in NUM_CATS_LIST:
+    print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, PARENT_COUNT))
     legals_mat = ngram2legals_mat[NGRAM_SIZE_FOR_CAT]
-    probes, probe2cat = make_probe_data(legals_mat, vocab, NUM_CATS, num_members, MIN_COUNT,
+    probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, PARENT_COUNT,
                                         verbose=True, plot=True)
-    num_members2probes_data[num_members] = (probes, probe2cat)
+    num_cats2probes_data[num_cats] = (probes, probe2cat)
     c = Counter(tokens)
     for p in probes:
-        # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bimodality
+        # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
         if c[p] < MIN_PROBE_FREQ:
             print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
     print('Collected {} probes'.format(len(probes)))
@@ -102,36 +98,37 @@ for num_members in NUM_MEMBERS_LIST:
     print('input-data col-wise ba={:.3f}'.format(ba2))
     print()
 
-
 # srn
 srn = RNN(input_size=num_vocab,
-          learning_rate=LEARNING_RATE,
-          num_epochs=NUM_EPOCHS,
+          rnn_type='srn',
           num_hiddens=NUM_HIDDENS,
+          num_epochs=NUM_EPOCHS,
+          learning_rate=LEARNING_RATE,
+          optimization='adagrad',
           bptt=BPTT,
           num_seqs_in_batch=1)  # num_seqs_in_batch must be 1
 # train once + evaluate on all category structures
 lr = srn.learning_rate[0]  # initial
 decay = srn.learning_rate[1]
 num_epochs_without_decay = srn.learning_rate[2]
-num_members2bas = {num_members: [] for num_members in NUM_MEMBERS_LIST}
+num_cats2bas = {num_cats: [] for num_cats in NUM_CATS_LIST}
 for epoch in range(srn.num_epochs):
     # perplexity
     pp = srn.calc_seqs_pp(train_seqs[:NUM_PP_SEQS])
     # ba
-    for MIN_COUNT, (probes, probe2cat) in sorted(num_members2probes_data.items(), key=lambda i: i[0]):
+    for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
         wx = srn.get_wx()  # TODO also test wy
         p_acts = np.asarray([wx[word2id[p], :] for p in probes])
         ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
-        num_members2bas[MIN_COUNT].append(ba)
-        print('epoch={:>2}/{:>2} | ba={:>5} MIN_COUNT={}'.format(epoch, srn.num_epochs, ba, MIN_COUNT))
+        num_cats2bas[num_cats].append(ba)
+        print('epoch={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(epoch, srn.num_epochs, ba, num_cats))
     # train
     lr_decay = decay ** max(epoch - num_epochs_without_decay, 0)
     lr = lr * lr_decay  # decay lr if it is time
     srn.train_epoch(train_seqs, lr, verbose=False)
     #
-    print('epoch={:>2}/{:>2} | pp={:>5}'.format(epoch, srn.num_epochs, int(pp)))
+    print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
 
 
-plot_ba_trajs(num_members2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
+plot_ba_trajs(num_cats2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
     NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E))

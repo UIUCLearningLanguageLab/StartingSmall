@@ -1,11 +1,12 @@
 import numpy as np
 import pyprind
-from scipy.cluster.hierarchy import linkage, dendrogram, cophenet
-from scipy.spatial.distance import pdist
+from scipy import stats
+from scipy.cluster.hierarchy import linkage, dendrogram
 from bayes_opt import BayesianOptimization
 from functools import partial
 import matplotlib.pyplot as plt
 import multiprocessing as mp
+from cytoolz import itertoolz
 
 
 def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
@@ -14,118 +15,74 @@ def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
     return res
 
 
-def cluster(data_mat, original_row_words=None, original_col_words=None):
-    print('Clustering...')
-    #
-    lnk0 = linkage(pdist(data_mat))
-    dg0 = dendrogram(lnk0,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-    z = data_mat[dg0['leaves'], :]  # reorder rows
-    #
-    lnk1 = linkage(pdist(data_mat.T))
-    dg1 = dendrogram(lnk1,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-
-    z = z[:, dg1['leaves']]  # reorder cols
-    #
-    if original_row_words is None and original_col_words is None:
-        return z
+def get_all_probes_in_tree(vocab, res1, probe2node_id, z, node_id):
+    """
+    # z should be the result of linkage,which returns an array of length n - 1
+    # giving you information about the n - 1 cluster merges which it needs to pairwise merge n clusters.
+    # Z[i] will tell us which clusters were merged in the i-th iteration.
+    # a row in z is: [idx1, idx2, distance, count]
+    # all idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
+    """
+    try:
+        p = vocab[node_id.astype(int)]
+    except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
+        new_node_id1 = z[node_id.astype(int) - len(vocab)][0]
+        new_node_id2 = z[node_id.astype(int) - len(vocab)][1]
+        get_all_probes_in_tree(vocab, res1, probe2node_id, z, new_node_id1)
+        get_all_probes_in_tree(vocab, res1, probe2node_id, z, new_node_id2)
     else:
-        row_labels = np.array(original_row_words)[dg0['leaves']]
-        col_labels = np.array(original_col_words)[dg1['leaves']]
-        return z, row_labels, col_labels
+        res1.append(p)
+        probe2node_id[p] = node_id.astype(int)
 
 
-def make_probe_data(data_mat, vocab, num_cats, num_members, min_count,
-                    method='average', metric='cityblock', verbose=False, plot=True):
+def make_probe_data(data_mat, vocab, num_cats, parent_count,
+                    method='single', metric='correlation', verbose=False, plot=True):
     """
     make categories from hierarchically organized data.
     """
     num_vocab = len(vocab)
+    word2id = {word: n for n, word in enumerate(vocab)}
+    num_members = parent_count / num_cats
     assert data_mat.shape == (num_vocab, num_vocab)
-    # linkage will return an array of length n - 1
-    # giving you information about the n - 1 cluster merges which it needs to pairwise merge n clusters.
-    # Z[i] will tell us which clusters were merged in the i-th iteration
-    z = linkage(data_mat, method, metric)
-    c, _ = cophenet(z, pdist(data_mat, metric))
-    assert c > 0.8
+    assert num_cats % 2 == 0
+    assert num_members.is_integer()
+    num_members = int(num_members)
+    # get z
+    corr_mat = to_corr_mat(data_mat)
 
-    def get_all_probes_in_tree(res, visited, z, node_id):
-        try:
-            p = vocab[node_id.astype(int)]
-        except IndexError:  # idx does not refer to leaf node (it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - len(vocab)][0]
-            new_node_id2 = z[node_id.astype(int) - len(vocab)][1]
-            if new_node_id1 not in visited:
-                get_all_probes_in_tree(res, visited, z, new_node_id1)
-            if new_node_id2 not in visited:
-                get_all_probes_in_tree(res, visited, z, new_node_id2)
-        else:
-            res.append(p)
-            visited.append(node_id)
+    # TODO why does data not get > 0.5 ba? where are the indices wrong?
 
-    # define categories
-    assert num_members <= min_count
-    probes = []
-    probe2cat = {}
-    cat_id = 0
-    visited_node_ids = []  # prevents descending the same tree more than once (otherwise cats share probes)
+    z = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise result is messy
+    # find idx where count == parent_count
     for row in z:
-        if cat_id == num_cats:
+        idx1, idx2, dist, count = row
+        if count == parent_count:
             break
-        idx1, idx2, dist, count = row  # idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
-        #
-        if count >= min_count:
-            unvisited_ps = []
-            get_all_probes_in_tree(unvisited_ps, visited_node_ids, z, idx1)  # populates probes_in_cluster
-            get_all_probes_in_tree(unvisited_ps, visited_node_ids, z, idx2)  # populates probes_in_cluster
-            if len(unvisited_ps) < min_count:
-                print('WARNING: Found cluster which includes nodes which previously have been visited.')
-                # raise RuntimeError('Cluster {} includes nodes which previously have been visited'.format(cat_id))
-            if len(unvisited_ps) < num_members:
-                print('WARNING: Found cluster with unvisited nodes < num_members - skipping.')
-                continue  # TODO just increment cat_id instead?
-            #
-            probe_cats = unvisited_ps[-num_members:]  # get last because they are on lowest levels of tree
-            probes.extend(probe_cats)
-            probe2cat.update({p: cat_id for p in probe_cats})
-            cat_id += 1
-            if verbose:
-                print('cluster {}: num unvisited nodes={} | using {} as probes'.format(
-                    cat_id, len(unvisited_ps), len(probe_cats)))
-                print()
     else:
-        raise RuntimeError('Too many categories. Could not make all categories from given data. ')
+        raise RuntimeError('Did not find any cluster with count={}'.format(parent_count))
+    # get probes
+    retrieved_probes = []
+    probe2node_id = {}
+    for idx in [idx1, idx2]:
+        get_all_probes_in_tree(vocab, retrieved_probes, probe2node_id, z, idx)  # TODO does the order of probes  preserve tree structure?
+    # split into categories
+    probe2cat = {}
+    probes = []
+    for cat_id, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
+        assert len(cat_probes) == num_members
+        probe2cat.update({p: cat_id for p in cat_probes})
+        probes.extend(cat_probes)
+        print('cat_id={} num probes in cat={}'.format(cat_id, len(cat_probes)))
 
-    if plot:
-        annotate_above = num_vocab
-        fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
-        ddata = dendrogram(z, ax=ax, leaf_rotation=90., leaf_font_size=12,)
-        # label only probes
-        reordered_vocab = np.asarray(vocab)[ddata['leaves']]
-        ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=5)
-        plt.title('Hierarchical Clustering Dendrogram\n'
-                  'num_cats={}, num_members={}, min_count={} '.format(
-            num_cats, num_members, min_count), fontsize=20)
-        plt.xlabel('words in vocab (only probes are shown)')
-        plt.ylabel('{} distance'.format(metric))
-        for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
-            x = 0.5 * sum(i[1:3])
-            y = d[1]
-            if y > annotate_above:
-                plt.plot(x, y, 'o', c=c)
-                plt.annotate('{}'.format(int(y)), (x, y), xytext=(0, -5),
-                             textcoords='offset points',
-                             va='top', ha='center')
-        plt.show()
+        # plot_heatmap(data_mat[[word2id[p] for p in cat_probes], :], [], [])
 
-    # assert len(probes) == num_members * num_cats
+        if plot:
+            fig, ax = plt.subplots(figsize=(40, 10), dpi=400)
+            dg = dendrogram(z, ax=ax)
+            reordered_vocab = np.asarray(vocab)[dg['leaves']]
+            ax.set_xticklabels(['{} {} {}'.format(w, probe2node_id[w], word2id[w]) if w in cat_probes else ''
+                                for w in reordered_vocab], fontsize=2)
+            plt.show()
     return probes, probe2cat
 
 
@@ -168,7 +125,7 @@ def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, ran
     return tokens_chunk
 
 
-def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.01,
+def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2,
               num_chunks=4):
     """
     generate text by adding one word at a time to a list of words.
@@ -272,3 +229,36 @@ def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=1
     results = calc_probes_ba(best_thr)
     res = np.mean(results)
     return res
+
+
+def to_corr_mat(data_mat):
+    zscored = stats.zscore(data_mat, axis=0, ddof=1)
+    res = np.dot(zscored.T, zscored)
+    return res
+
+
+def plot_heatmap(mat, ytick_labels, xtick_labels,
+                 figsize=(10, 10), dpi=200, ticklabel_fs=1, title_fs=5):
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    title = 'Cluster Structure of\ndata sampled from hierarchical diffusion process'
+    plt.title(title, fontsize=title_fs)
+    # heatmap
+    print('Plotting heatmap...')
+    ax.imshow(mat,
+              aspect='equal',
+              cmap=plt.get_cmap('jet'),
+              interpolation='nearest')
+    # xticks
+    num_cols = len(mat.T)
+    ax.set_xticks(np.arange(num_cols))
+    ax.xaxis.set_ticklabels(xtick_labels, rotation=90, fontsize=ticklabel_fs)
+    # yticks
+    num_rows = len(mat)
+    ax.set_yticks(np.arange(num_rows))
+    ax.yaxis.set_ticklabels(ytick_labels,   # no need to reverse (because no extent is set)
+                            rotation=0, fontsize=ticklabel_fs)
+    # remove ticklines
+    lines = (ax.xaxis.get_ticklines() +
+             ax.yaxis.get_ticklines())
+    plt.setp(lines, visible=False)
+    plt.show()
