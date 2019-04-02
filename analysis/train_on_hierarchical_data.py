@@ -14,7 +14,7 @@ MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
-ZIPF_A = 2  # TODO closer to 1.0 will favor higher numbers and thus default to random uniform more often
+ZIPF_A = 1.1  # TODO closer to 1.0 will favor higher numbers and thus default to random uniform more often
 
 MB_SIZE = 64
 LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast  # TODO
@@ -54,7 +54,7 @@ def plot_ba_trajs(d1, d2, title):
 
 # make tokens with hierarchical n-gram structure
 vocab, tokens, ngram2legals_mat = make_data(
-    ZIPF_A, NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E)
+    NUM_TOKENS, ZIPF_A, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
 word2id = {word: n for n, word in enumerate(vocab)}
