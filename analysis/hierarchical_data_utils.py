@@ -11,9 +11,15 @@ from scipy.spatial.distance import pdist
 from matplotlib.colors import to_hex
 
 
-def generate_tokens_from_zipfian(vocab, num_tokens):  # TODO use
-    num_vocab = len(vocab)
-    res = [vocab[i] if i < num_vocab else 'OOV' for i in np.random.zipf(2, num_tokens)]
+def generate_tokens_from_zipfian(words, num_tokens):  # TODO use
+    num_vocab = len(words)
+    res = [words[i] if i < num_vocab else np.random.choice(words, size=1) for i in np.random.zipf(2, num_tokens)]
+    return res
+
+
+def sample_once_from_zipfian(words, zipf_a):
+    rand_id = np.random.zipf(zipf_a, 1).item()
+    res = words[rand_id] if rand_id < len(words) else np.random.choice(words, size=1).item()
     return res
 
 
@@ -115,7 +121,7 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, random_interval=np.nan):
+def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, zipf_a, random_interval=np.nan):
     tokens_chunk = np.random.choice(vocab_, size=num_start_).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(chunk_size_) if chunk_id == 0 else None
     for loc in range(chunk_size_):
@@ -133,7 +139,7 @@ def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, ran
                 legals.intersection_update(word2legals[previous_token])
             # sample uniformly from legals
             try:
-                new_token = np.random.choice(list(legals), size=1).item()
+                new_token = sample_once_from_zipfian(list(legals), zipf_a)
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available.'
                                    'Increase E - the probability of a flip in hierarchical diffusion process')
@@ -143,7 +149,7 @@ def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, ran
     return tokens_chunk
 
 
-def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2,
+def make_data(num_tokens, zipf_a, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2,
               num_chunks=4):
     """
     generate text by adding one word at a time to a list of words.
@@ -182,7 +188,8 @@ def make_data(num_tokens, max_ngram_size=6, num_descendants=2, num_levels=12, e=
     # get one token at a time
     pool = mp.Pool(processes=num_chunks)
     chunk_size = num_tokens // num_chunks
-    results = [pool.apply_async(make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size))
+    results = [pool.apply_async(make_chunk,
+                                args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, zipf_a))
                for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')

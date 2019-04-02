@@ -14,10 +14,11 @@ MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
+ZIPF_A = 2  # TODO test
 
 MB_SIZE = 64
 LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast  # TODO
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 NUM_HIDDENS = 128
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
@@ -28,7 +29,7 @@ NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 10
 
 
-def plot_ba_trajs(d, title):
+def plot_ba_trajs(d1, d2, title):
     fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
     plt.title(title)
     ax.set_xlabel('Epoch')
@@ -39,11 +40,13 @@ def plot_ba_trajs(d, title):
     ax.yaxis.grid(True)
     ax.set_ylim([0.5, 1.0])
     # plot
-    num_trajs = len(d)
+    num_trajs = len(d1)
     palette = iter(sns.color_palette('hls', num_trajs))
-    for num_cats, bas in sorted(d.items(), key=lambda i: i[0]):
-        ax.plot(bas, '-', color=next(palette),
+    for num_cats, bas in sorted(d1.items(), key=lambda i: i[0]):
+        c = next(palette)
+        ax.plot(bas, '-', color=c,
                 label='num_cats={}'.format(num_cats))
+        ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
     plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
     plt.tight_layout()
     plt.show()
@@ -51,7 +54,7 @@ def plot_ba_trajs(d, title):
 
 # make tokens with hierarchical n-gram structure
 vocab, tokens, ngram2legals_mat = make_data(
-    NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E)
+    ZIPF_A, NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
 word2id = {word: n for n, word in enumerate(vocab)}
@@ -77,11 +80,12 @@ print('num sequences={}'.format(len(train_seqs)))
 
 # probes_data
 num_cats2probes_data = {}
+num_cats2max_ba = {}
 for num_cats in NUM_CATS_LIST:
     print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, PARENT_COUNT))
     legals_mat = ngram2legals_mat[NGRAM_SIZE_FOR_CAT]
     probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, PARENT_COUNT,
-                                        plot=True)
+                                        plot=False)
     num_cats2probes_data[num_cats] = (probes, probe2cat)
     c = Counter(tokens)
     for p in probes:
@@ -97,6 +101,7 @@ for num_cats in NUM_CATS_LIST:
     print('input-data row-wise ba={:.3f}'.format(ba1))
     print('input-data col-wise ba={:.3f}'.format(ba2))
     print()
+    num_cats2max_ba[num_cats] = ba2
 
 # srn
 srn = RNN(input_size=num_vocab,
@@ -129,5 +134,6 @@ for epoch in range(srn.num_epochs):
     #
     print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
     #
-    plot_ba_trajs(num_cats2bas, title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={}'.format(
-        NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E))
+    plot_ba_trajs(num_cats2bas, num_cats2max_ba,
+                  title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={} ZIPF_A={}'.format(
+                      NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E, ZIPF_A))
