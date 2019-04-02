@@ -2,42 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import linkage, dendrogram
-from scipy.spatial.distance import pdist
 
-from analysis.hierarchical_data_utils import sample_from_hierarchical_diffusion, to_corr_mat, plot_heatmap
+from analysis.hierarchical_data_utils import sample_from_hierarchical_diffusion, to_corr_mat, plot_heatmap, cluster
 
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 12  # 10
 E = 0.2  # 0.05, the higher, the more unique rows in data (and lower first PC)
-
-
-def cluster(mat, original_row_words=None, original_col_words=None):
-    print('Clustering...')
-    #
-    lnk0 = linkage(pdist(mat))
-    dg0 = dendrogram(lnk0,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-    z = mat[dg0['leaves'], :]  # reorder rows
-    #
-    lnk1 = linkage(pdist(mat.T))
-    dg1 = dendrogram(lnk1,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-
-    z = z[:, dg1['leaves']]  # reorder cols
-    #
-    if original_row_words is None and original_col_words is None:
-        return z
-    else:
-        row_labels = np.array(original_row_words)[dg0['leaves']]
-        col_labels = np.array(original_col_words)[dg1['leaves']]
-        return z, row_labels, col_labels
-
 
 # vocab
 num_vocab = NUM_DESCENDANTS ** NUM_LEVELS

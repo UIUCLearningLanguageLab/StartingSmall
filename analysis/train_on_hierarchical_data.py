@@ -5,25 +5,25 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
+from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba, to_corr_mat
 from analysis.rnn import RNN
 
 
-NUM_TOKENS = 1 * 10 ** 5  # must be at least 1M to get good ba with 30 categories
+NUM_TOKENS = 1 * 10 ** 6  # must be at least 1M to get good ba with 30 categories
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 10  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast
+LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO
 NUM_EPOCHS = 10  # 10
 NUM_HIDDENS = 512
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
 
 PARENT_COUNT = 1024  # exact size of single parent cluster
-NUM_CATS_LIST = [2, 4]
+NUM_CATS_LIST = [2]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 10
 
@@ -81,7 +81,7 @@ for num_cats in NUM_CATS_LIST:
     print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, PARENT_COUNT))
     legals_mat = ngram2legals_mat[NGRAM_SIZE_FOR_CAT]
     probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, PARENT_COUNT,
-                                        verbose=True, plot=True)
+                                        plot=True)
     num_cats2probes_data[num_cats] = (probes, probe2cat)
     c = Counter(tokens)
     for p in probes:
