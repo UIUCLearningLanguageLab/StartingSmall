@@ -48,7 +48,7 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
     assert num_cats % 2 == 0
     assert num_members.is_integer()
     num_members = int(num_members)
-    # get z
+    # get z - careful: idx1 and idx2 in z are not integers (they are floats)
     corr_mat = to_corr_mat(data_mat)
     z = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise result is messy
     # find cluster (identified by idx1 and idx2) with parent_count nodes beneath it
@@ -66,34 +66,30 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
     probe2cat = {}
     probes = []
     cat_probes_list = []
-    node_id2color = {int(i): 'black' for i in range(len(z) * 2 + 2)}  # all non-probes should be colored black
-
-    print(node_id2color)
-
-    print(num_vocab)
-    print(len(z))
-    print(len(z) * 2)
-
-
-    cmap = plt.cm.get_cmap('hsv', num_cats)
+    probe2color = {}
+    cmap = plt.cm.get_cmap('hsv', num_cats + 1)
     for cat_id, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
         assert len(cat_probes) == num_members
         probe2cat.update({p: cat_id for p in cat_probes})
         probes.extend(cat_probes)
         print('cat_id={} num probes in cat={}'.format(cat_id, len(cat_probes)))
         cat_probes_list.append(cat_probes)
-        #
-        for node_id in [word2id[p] for p in cat_probes]:  # word2id can map a probe to its node_id
-            node_id2color[node_id] = cmap(cat_id)
-            # print(node_id, to_hex(cmap(cat_id)))  # TODO tes
+        for p in cat_probes:
+            probe2color[p] = to_hex(cmap(cat_id))
     #
     if plot:
-        colors_it = iter([cmap(i) for i in range(num_cats)])  # TODO why does this not work?
-        colors_it = iter(['r', 'g', 'b', 'y'])
-        fig, ax = plt.subplots(figsize=(40, 10), dpi=400)
-        dg = dendrogram(z, ax=ax, color_threshold=-1, link_color_func=lambda i: node_id2color[i])  # TODO test link_color_func
+
+        link2color = {}
+        for i, i12 in enumerate(z[:, :2].astype(int)):
+            c1, c2 = (link2color[x] if x > len(z) else probe2color[vocab[x.astype(int)]]
+                      for x in i12)
+            link2color[i + 1 + len(z)] = c1 if c1 == c2 else 'grey'
+
+        colors_it = iter([to_hex(cmap(i)) for i in range(num_cats)])
+        fig, ax = plt.subplots(figsize=(20, 10), dpi=100)
+        dg = dendrogram(z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
         reordered_vocab = np.asarray(vocab)[dg['leaves']]
-        ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=2)
+        ax.set_xticklabels([w if w in probes else '' for w in reordered_vocab], fontsize=6)
         for cat_probes in cat_probes_list:
             color = next(colors_it)
             for i in range(num_vocab):

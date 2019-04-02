@@ -9,21 +9,21 @@ from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
 
 
-NUM_TOKENS = 1 * 10 ** 5  # must be at least 1M to get good ba with 30 categories
+NUM_TOKENS = 5 * 10 ** 6  # must always be at least 1M
 MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
 
 MB_SIZE = 64
-LEARNING_RATE = (0.01, 0.00, 20)  # 0.01 is too fast  # TODO
-NUM_EPOCHS = 10  # 10
+LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast  # TODO
+NUM_EPOCHS = 10
 NUM_HIDDENS = 128
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
 
 PARENT_COUNT = 256  # exact size of single parent cluster
-NUM_CATS_LIST = [2]
+NUM_CATS_LIST = [2, 4, 8, 16, 32]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
 MIN_PROBE_FREQ = 10
 
