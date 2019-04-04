@@ -249,7 +249,11 @@ def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=1
 
     # use bayes optimization to find best_thr
     sims_mean = np.mean(probe_sims).item()
-    gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}  # without this, warnings about predicted variance < 0
+
+    # TODO what setting prevents dips in ba in trajectory figure? alpha was 1e-5
+
+    gp_params = {"alpha": 1e-4,  # without this, warnings about predicted variance < 0
+                 "n_restarts_optimizer": 5}
     bo = BayesianOptimization(calc_probes_ba, {'thr': (0.0, 1.0)}, verbose=False)
     bo.explore(
         {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly

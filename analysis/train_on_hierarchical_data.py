@@ -4,6 +4,9 @@ import numpy as np
 from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pickle
+from pathlib import Path
+import datetime
 
 from analysis.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from analysis.rnn import RNN
@@ -14,11 +17,11 @@ MAX_NGRAM_SIZE = 1
 NUM_DESCENDANTS = 2  # 2
 NUM_LEVELS = 8  # 12
 E = 0.2  # 0.2
-LEGALS_DISTRIBUTIONS = ['uniform', 'uniform', 'uniform', 'triangular', 'triangular', 'triangular']
+LEGALS_DISTRIBUTIONS = ['uniform', 'triangular'] * 10
 
 MB_SIZE = 64
 LEARNING_RATE = (0.001, 0.00, 20)  # 0.01 is too fast
-NUM_EPOCHS = 20
+NUM_EPOCHS = 100  # 100
 NUM_HIDDENS = 128
 BPTT = MAX_NGRAM_SIZE
 NUM_PP_SEQS = 10  # number of documents to calc perplexity for
@@ -26,7 +29,6 @@ NUM_PP_SEQS = 10  # number of documents to calc perplexity for
 PARENT_COUNT = 256  # exact size of single parent cluster
 NUM_CATS_LIST = [2, 4, 8, 16, 32]
 NGRAM_SIZE_FOR_CAT = 1  # TODO manipulate this - or concatenate all structures?
-MIN_PROBE_FREQ = 10
 
 
 def plot_ba_trajs(d1, d2, title):
@@ -88,9 +90,10 @@ for legals_distribution in LEGALS_DISTRIBUTIONS:
                                             plot=False)
         num_cats2probes_data[num_cats] = (probes, probe2cat)
         c = Counter(tokens)
+        min_probe_freq = num_theoretical_legals
         for p in probes:
             # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
-            if c[p] < MIN_PROBE_FREQ:
+            if c[p] < min_probe_freq:
                 print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
         print('Collected {} probes'.format(len(probes)))
         # check probe sim
@@ -133,7 +136,13 @@ for legals_distribution in LEGALS_DISTRIBUTIONS:
         srn.train_epoch(train_seqs, lr, verbose=False)
         #
         print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
-        #
-        plot_ba_trajs(num_cats2bas, num_cats2max_ba,
-                      title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={} ZIPF_A={}'.format(
-                          NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E, legals_distribution))
+    #
+    plot_ba_trajs(num_cats2bas, num_cats2max_ba,
+                  title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={}'
+                        '\nNUM_LEVELS={} E={} LEGALS_DISTRIBUTIONS={}'.format(
+                      NUM_TOKENS, MAX_NGRAM_SIZE, NUM_DESCENDANTS, NUM_LEVELS, E, legals_distribution))
+    # save
+    time_of_init = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+    p = Path().cwd() / 'num_cats2bas' / 'num_cats2bas_{}.pkl'.format(time_of_init)
+    with p.open('wb') as f:
+        pickle.dump(num_cats2bas, f)
