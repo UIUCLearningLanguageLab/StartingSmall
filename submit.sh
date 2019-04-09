@@ -8,7 +8,7 @@
 #echo ${pwd} | sudo -S mount /media/lab
 #
 cd /home/ph/LudwigCluster/scripts
-bash kill_job.sh 2ProcessNLP
+bash kill_job.sh StartingSmall
 bash reload_watcher.sh
 
 echo "Syncing childeshub..."
