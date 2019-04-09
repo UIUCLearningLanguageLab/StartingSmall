@@ -8,7 +8,8 @@
 #echo ${pwd} | sudo -S mount /media/lab
 #
 cd /home/ph/LudwigCluster/scripts
-bash upload_watchers.sh
+bash kill_job.sh 2ProcessNLP
+bash reload_watcher.sh
 
 echo "Syncing childeshub..."
 rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/childeshub /media/lab/StartingSmall/
