@@ -35,8 +35,8 @@ class Eval:
     context_types = ['ordered']  # none, ordered, shuffled, last
     hub_modes = ['sem']  # sem, syn  # TODO add events, syns by POS
     cluster_metrics = ['ba']  # ba, f1, ck
-    pos_for_map = ['nouns']  #, 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
-    w_names = ['wy']  # 'wx',
+    pos_for_map = ['nouns']  # 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
+    w_names = ['wy', 'wx']  # 'wx',
     word_types = ['terms']  # 'probes',
     op_types = ['diff']  # 'ratio',
 

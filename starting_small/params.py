@@ -15,7 +15,7 @@ class Params:
     reinit = [None]
     # reinit = [None, 'all_10_w', 'all_10_a', 'all_90_w', 'all_90_a']  # w=weights, a=adagrad b=bias
     num_saves = [10]
-    bptt_steps = [3]  # default: 7
+    bptt_steps = [7]  # default: 7
     num_layers = [1]  # default: 1
     mb_size = [64]
     lr = [0.01]

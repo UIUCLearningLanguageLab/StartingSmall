@@ -25,33 +25,13 @@ from starting_small.summaries import write_sim_summaries
 # noinspection PyTypeChecker
 def rnn_job(param2val):
 
-    def move_event_file_to_server(loc_job_p):
-        def is_dataloss(events_p):
-            try:
-                list(tf.train.summary_iterator(str(events_p)))
-            except DataLossError:
-                return True
-            else:
-                return False
-
-        # check data loss
-        events_p = None
-        for events_p in loc_job_p.glob('*events*'):
-            if is_dataloss(events_p):
-                return RuntimeError('Detected data loss in events file. Did you close file writer?')
-
-        #  move events file to shared drive
-        dst = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name']
-        if not dst.exists():
-            dst.mkdir(parents=True)
-        shutil.move(str(events_p), str(dst))
-
-        # write param2val to shared drive
-        param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
-        if not param2val_p.exists():
-            param2val['job_name'] = None
-            with param2val_p.open('w', encoding='utf8') as f:
-                yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
+    def is_dataloss(events_p):
+        try:
+            list(tf.train.summary_iterator(str(events_p)))
+        except DataLossError:
+            return True
+        else:
+            return False
 
     def train_on_corpus(dmb, tmb, tmbg, g, s):
         print('Training on items from mb {:,} to mb {:,}...'.format(tmb, dmb))
@@ -125,7 +105,9 @@ def rnn_job(param2val):
     hub = Hub(params=params)
     sys.stdout.flush()
     tf_graph = tf.Graph()
+
     with tf_graph.as_default():
+
         # tensorflow + tensorboard
         graph = DirectGraph(params, hub)
         local_job_p = config.LocalDirs.runs / param2val['job_name']
@@ -134,6 +116,7 @@ def rnn_job(param2val):
         sess = tf.Session()
         summary_writer = tf.summary.FileWriter(local_job_p, sess.graph)
         sess.run(tf.global_variables_initializer())
+
         # train and eval
         train_mb = 0
         train_mb_generator = hub.gen_ids()  # has to be created once
@@ -153,8 +136,26 @@ def rnn_job(param2val):
             if params.reinit is not None:  # pylint: disable inspection
                 if timepoint in make_reinit_timepoints(params):
                     reinit_weights(graph, sess, params)
+
         sess.close()
         summary_writer.flush()
         summary_writer.close()
-        time.sleep(1)
-        move_event_file_to_server(local_job_p) if not config.Eval.debug else None
+
+        # check data loss
+        events_p = None
+        for events_p in local_job_p.glob('*events*'):
+            if is_dataloss(events_p):
+                return RuntimeError('Detected data loss in events file. Did you close file writer?')
+
+        #  move events file to shared drive
+        dst = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name']
+        if not dst.exists():
+            dst.mkdir(parents=True)
+        shutil.move(str(events_p), str(dst))
+
+        # write param2val to shared drive
+        param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
+        if not param2val_p.exists():
+            param2val['job_name'] = None
+            with param2val_p.open('w', encoding='utf8') as f:
+                yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
