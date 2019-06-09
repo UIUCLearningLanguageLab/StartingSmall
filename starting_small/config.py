@@ -37,8 +37,7 @@ class Eval:
     cluster_metrics = ['ba']  # ba, f1, ck
     pos_for_map = ['nouns']  # 'verbs', 'adjectives', 'prepositions', 'pronouns', 'determiners']
     w_names = ['wy', 'wx']  # 'wx',
-    word_types = ['terms']  # 'probes',
-    op_types = ['diff']  # 'ratio',
+    word_types = ['terms', 'probes', 'nouns']  # 'probes', 'terms', 'nouns
 
 
 class Graph:

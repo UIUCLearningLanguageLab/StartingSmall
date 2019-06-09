@@ -9,49 +9,34 @@ from starting_small import config
 from starting_small.evalutils import sample_from_iterable
 
 
-def calc_diff(hub, graph, sess, cat, word_type, op_type, w_name):
+def calc_w_term_sims(hub, graph, sess, word_type, w_name):
     """
-    return ratio of average of pairwise similarities between weights corresponding to "term_ids" and
-    average of pairwise similarities between weights corresponding to "other_term_ids".
-    represents a measure of differentiation (the higher, the more differentiation).
-    when, "diff_type" = "probes", measure indicates differentiation between probe categories.
-    when, "diff_type" = "terms", measure indicates differentiation of probe categories from all other terms.
-    it makes most sense to use "probes" for semantic probes, to measure semantic differentiaton in the noun category.
-
+    overall similarity of weights (wx or wy)
+    similarity of weights starts of at zero and increase gradually,
+    contrary to similarity of contextualized hidden states which jumps to near 1.0 at first timepoint
     """
-    self_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.cat_probe_list_dict[cat]]
     if word_type == 'probes':
-        other_term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.types]
+        term_ids = [hub.train_terms.term_id_dict[probe] for probe in hub.probe_store.types]
+    elif word_type == 'nouns':
+        term_ids = [hub.train_terms.term_id_dict[noun] for noun in hub.nouns]
     elif word_type == 'terms':
         np.random.seed(1)
-        other_term_ids = np.arange(0, hub.params.num_types)
+        term_ids = np.arange(0, hub.params.num_types // 2)  # divide by 2 to save memory
     else:
-        raise AttributeError('Invalid arg to "diff_type"')
+        raise AttributeError('Invalid arg to "word_type": "{}"'.format(word_type))
     #
     if w_name == 'wx':
         w = sess.run(graph.wx)
-        w_filtered = w[self_term_ids, :]
-        w_other = w[other_term_ids, :]
+        w_filtered = w[term_ids, :]
     elif w_name == 'wy':
         w = sess.run(graph.wy)
-        w_filtered = w[:, self_term_ids].T
-        w_other = w[:, other_term_ids].T
+        w_filtered = w[:, term_ids].T
     else:
         raise AttributeError('rnnlab: Invalid arg to "w_name"')
     #
-    self_sim = cosine_similarity(w_filtered, w_filtered).mean().mean()
-    other_sim = cosine_similarity(w_other, w_other).mean().mean()
-
-    # TODO does computing this makes sense?
-    print(cat)
-    print('{:.4f} {:.4f} {:.4f} {:.4f}'.format(
-        self_sim, other_sim, self_sim - abs(other_sim), self_sim / abs(other_sim)))
-
-    if op_type == 'diff':
-        return self_sim - abs(other_sim)
-    elif op_type == 'ratio':
-
-        return self_sim / abs(other_sim)
+    sims = cosine_similarity(w_filtered, w_filtered).mean(axis=1)
+    print('{} {} mean_sim={}'.format(word_type, w_name, sims.mean()))
+    return sims
 
 
 def calc_pos_map(hub, graph, sess, pos, max_x=2 ** 16, max_term_windows=16):

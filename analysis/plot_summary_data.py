@@ -9,29 +9,36 @@ from starting_small.params import DefaultParams as MatchParams
 
 from ludwigcluster.utils import list_all_param2vals
 
-TAG = 'sem_ordered_ba_layer_0'
+LOCAL = True
+
+# TAG = 'sem_ordered_ba_layer_0'
 # TAG = 'sem_tf-f1_layer_0_summary'
-# TAG = 'sem_terms_wy_sim_diff'  # TODO why is this zero - is it the mean of the distribution?
+TAG = 'sem_terms_wy_sim'
+Y_THRESHOLD = 0
 NUM_X = 10 + 1
 FIGSIZE = (20, 10)
 VERBOSE = True
 
-YLIMs = None  #[0.15, 0.35]
+YLIMs = None  # [0.15, 0.35]
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
-MatchParams.bptt_steps = [3]
-MatchParams.num_iterations = [[20, 20]]  # [10, 30], [30, 10],
+MatchParams.num_iterations = [[1, 1]]
+# MatchParams.bptt_steps = [7]
+# MatchParams.num_iterations = [[20, 20]]  # [10, 30], [30, 10],
 # MatchParams.num_iterations = [[2, 38], [38, 2], [20, 20]]
 
 
 def gen_param_ps(param2requested, param2default):
     compare_params = [param for param, val in param2requested.__dict__.items()
                       if val != param2default[param]]
-    for param_p in config.RemoteDirs.runs.glob('param_*'):
+
+    runs_p = config.LocalDirs.runs.glob('*') if LOCAL else config.RemoteDirs.runs.glob('param_*')
+
+    for param_p in runs_p:
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
@@ -43,6 +50,8 @@ def gen_param_ps(param2requested, param2default):
             print('Param2val matches')
             label = '\n'.join(['{}={}'.format(param, param2val[param]) for param in compare_params])
             yield param_p, label
+        else:
+            print('Params do not match')
 
 
 def print_tags(events):
@@ -54,7 +63,10 @@ def print_tags(events):
 
 
 def get_xs_and_ys_for_param(param_p, tag):
-    events_ps = list(param_p.glob('*num*/*events*'))
+    if LOCAL:
+        events_ps = list(param_p.glob('*events*'))
+    else:
+        events_ps = list(param_p.glob('*num*/*events*'))
     if VERBOSE:
         print('Found {} event files'.format(len(events_ps)))
     xs = []
@@ -93,10 +105,16 @@ def get_simple_val(event, tag):
 summary_data = []
 for param_p, label in gen_param_ps(MatchParams, default_dict):
     xs, ys = get_xs_and_ys_for_param(param_p, TAG)
+
+    print(xs)
+    print(ys)
+
     if VERBOSE:
         print(ys)
-    if xs and ys and np.mean(ys, axis=0)[-1] > 0.64:
+    if xs and ys and np.mean(ys, axis=0)[-1] > Y_THRESHOLD:
         summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
+    else:
+        print('Does not pass threshold')
 summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
 if not summary_data:
     raise SystemExit('No data found')

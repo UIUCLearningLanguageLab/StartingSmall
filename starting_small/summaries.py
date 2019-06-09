@@ -8,7 +8,7 @@ from starting_small.evals import calc_cluster_score
 from starting_small.evals import make_probe_prototype_acts_mat
 from starting_small.evals import calc_pos_map
 from starting_small.evals import make_gold
-from starting_small.evals import calc_diff
+from starting_small.evals import calc_w_term_sims
 
 
 def write_sim_summaries(hub, graph, sess, data_mb, summary_writer):
@@ -16,12 +16,10 @@ def write_sim_summaries(hub, graph, sess, data_mb, summary_writer):
     fd = dict()
     for hub_mode in config.Eval.hub_modes:
         for word_type in config.Eval.word_types:
-            for op_type in config.Eval.op_types:
-                for w_name in config.Eval.w_names:
-                    name = '{}_{}_{}_sim_{}'.format(hub_mode, word_type, w_name, op_type)
-                    placeholder = graph.sim_name2placeholder[name]
-                    fd[placeholder] = np.array([calc_diff(hub, graph, sess, cat, word_type, op_type, w_name)
-                                                for cat in hub.probe_store.cats])
+            for w_name in config.Eval.w_names:
+                name = '{}_{}_{}_sim'.format(hub_mode, word_type, w_name)
+                placeholder = graph.sim_name2placeholder[name]
+                fd[placeholder] = calc_w_term_sims(hub, graph, sess, word_type, w_name)  # TODO test
     summary = sess.run(graph.sim_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 

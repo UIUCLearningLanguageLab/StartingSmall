@@ -28,10 +28,9 @@ class DirectGraph:
         self.sim_name2placeholder = {}
         for hub_mode in config.Eval.hub_modes:
             for word_type in config.Eval.word_types:
-                for op_type in config.Eval.op_types:
-                    for w_name in config.Eval.w_names:
-                        name = '{}_{}_{}_sim_{}'.format(hub_mode, word_type, w_name, op_type)
-                        self.sim_name2placeholder[name] = tf.placeholder(tf.float32)
+                for w_name in config.Eval.w_names:
+                    name = '{}_{}_{}_sim'.format(hub_mode, word_type, w_name)
+                    self.sim_name2placeholder[name] = tf.placeholder(tf.float32)
 
         # ap placeholders
         self.ap_name2placeholder = {}
