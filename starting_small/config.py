@@ -46,6 +46,6 @@ class Graph:
 
 class Figs:
     lw = 2
-    axlabel_fs = 16
-    leg_fs = 16
+    axlabel_fs = 12
+    leg_fs = 10
     dpi = None

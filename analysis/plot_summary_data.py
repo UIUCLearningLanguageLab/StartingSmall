@@ -9,27 +9,33 @@ from starting_small.params import DefaultParams as MatchParams
 
 from ludwigcluster.utils import list_all_param2vals
 
-LOCAL = True
+LOCAL = False
+VERBOSE = True
 
 # TAG = 'sem_ordered_ba_layer_0'
 # TAG = 'sem_tf-f1_layer_0_summary'
-TAG = 'sem_terms_wy_sim'
+TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
+
+REVERSE_COLORS = False
 Y_THRESHOLD = 0
 NUM_X = 10 + 1
-FIGSIZE = (20, 10)
-VERBOSE = True
+FIGSIZE = (6, 4)
+YLIMs = [0., 0.1]
 
-YLIMs = None  # [0.15, 0.35]
+
+tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy'),
+            'sem_probes_wx_sim': (True, 'Avg Cosine-Sim. of Probes in Wx'),
+            'sem_nouns_wy_sim': (True, 'Avg Cosine-Sim. of Nouns in Wy'),
+            'sem_nouns_wx_sim': (True, 'Avg Cosine-Sim. of Nouns in Wx'),
+            'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy'),
+            'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx')}
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
-MatchParams.num_iterations = [[1, 1]]
-# MatchParams.bptt_steps = [7]
-# MatchParams.num_iterations = [[20, 20]]  # [10, 30], [30, 10],
-# MatchParams.num_iterations = [[2, 38], [38, 2], [20, 20]]
+MatchParams.num_iterations = [[20, 20]]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -37,6 +43,7 @@ def gen_param_ps(param2requested, param2default):
                       if val != param2default[param]]
 
     runs_p = config.LocalDirs.runs.glob('*') if LOCAL else config.RemoteDirs.runs.glob('param_*')
+    print('WARNING: Looking for runs locally')
 
     for param_p in runs_p:
         print('Checking {}...'.format(param_p))
@@ -82,8 +89,17 @@ def get_xs_and_ys_for_param(param_p, tag):
             if VERBOSE:
                 print_tags(events)
             x = np.unique([event.step for event in events])
-            y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
-                 if simple_val is not None]
+            # get values
+            is_histogram = tag2info[tag][0]
+            if is_histogram:
+                y = [avg_histo for avg_histo in [get_avg_histo_val(event, tag) for event in events]
+                     if avg_histo is not None]
+            else:
+                y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
+                     if simple_val is not None]
+
+            print('y:')
+            print(y)
             print('Read {} events'.format(len(x)))
             if len(x) != NUM_X or len(y) != NUM_X:
                 continue
@@ -93,32 +109,46 @@ def get_xs_and_ys_for_param(param_p, tag):
     return xs, ys
 
 
-def get_simple_val(event, tag):
-    simple_vals = [v.simple_value for v in event.summary.value if v.tag == tag]
-    try:
-        return simple_vals[0]
-    except IndexError:
+def get_avg_histo_val(event, tag):
+    for v in event.summary.value:
+        if v.tag == tag:
+            res = v.histo.sum / v.histo.num
+            return res
+    else:
         return None
 
 
-# summary_data
-summary_data = []
-for param_p, label in gen_param_ps(MatchParams, default_dict):
-    xs, ys = get_xs_and_ys_for_param(param_p, TAG)
-
-    print(xs)
-    print(ys)
-
-    if VERBOSE:
-        print(ys)
-    if xs and ys and np.mean(ys, axis=0)[-1] > Y_THRESHOLD:
-        summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
+def get_simple_val(event, tag):
+    for v in event.summary.value:
+        if v.tag == tag:
+            return v.simple_value
     else:
-        print('Does not pass threshold')
-summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
-if not summary_data:
-    raise SystemExit('No data found')
+        return None
 
-# plot
-fig = make_summary_trajs_fig(summary_data, TAG, figsize=FIGSIZE, ylims=YLIMs)
-fig.show()
+
+for tag in TAGS:
+
+    # summary_data
+    summary_data = []
+    for param_p, label in gen_param_ps(MatchParams, default_dict):
+        xs, ys = get_xs_and_ys_for_param(param_p, tag)
+        if VERBOSE:
+            print('ys:')
+            print(ys)
+        if xs and ys and np.mean(ys, axis=0)[-1] >= Y_THRESHOLD:
+            summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
+        else:
+            print('Does not pass threshold')
+        print('--------------------- END param_p\n\n')
+
+
+    # sort data
+    summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
+    if not summary_data:
+        raise SystemExit('No data found')
+
+    # plot
+    ylabel = tag2info[tag][1]
+    fig = make_summary_trajs_fig(summary_data, ylabel,
+                                 figsize=FIGSIZE, ylims=YLIMs, reverse_colors=REVERSE_COLORS)
+    fig.show()

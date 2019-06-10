@@ -10,7 +10,7 @@ and moves them to a directory called "tensorboard" where the program tensorboard
 """
 
 
-IS_TEST = True
+IS_TEST = False
 
 
 KEY = 'num_saves'
