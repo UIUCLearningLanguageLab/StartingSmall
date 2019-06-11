@@ -19,7 +19,7 @@ class Params:
     num_layers = [1]  # default: 1
     mb_size = [64]
     lr = [0.01]
-    flavor = ['rnn']  # rnn, lstm, deltarnn, fahlmanrnn
+    flavor = ['lstm']  # rnn, lstm, deltarnn, fahlmanrnn
     optimizer = ['adagrad']
     embed_size = [512]  # default: 512
     wx_init = ['random']

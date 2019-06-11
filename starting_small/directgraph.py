@@ -137,7 +137,11 @@ class DirectGraph:
             self.wx = wx
             self.hs = hs
             self.wh = self.cell.trainable_variables
-            if self.params.optimizer == 'adagrad':
+            if self.params.flavor == 'lstm':
+                self.wh, self.bh, self.wh_adagrad, self.bh_adagrad = None, None, None, None
+                # LSTM has more params - but how to retrieve them?
+
+            elif self.params.optimizer == 'adagrad':
                 self.wh, self.bh, self.wh_adagrad, self.bh_adagrad = tf.get_collection(
                     tf.GraphKeys.GLOBAL_VARIABLES, scope=self.params.flavor + '0')
                 # TODO these vars are for layer 0 only
