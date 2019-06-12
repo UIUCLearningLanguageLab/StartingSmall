@@ -36,6 +36,6 @@ def make_summary_trajs_fig(summary_data, traj_name, figsize=None, ylims=None, re
                 label=label + '\nn={}'.format(n))
         ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')
     plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0,
-               fontsize=config.Figs.leg_fs, frameon=False, loc='lower right')
+               fontsize=config.Figs.leg_fs, frameon=False, loc='lower right', ncol=2)
     plt.tight_layout()
     return fig

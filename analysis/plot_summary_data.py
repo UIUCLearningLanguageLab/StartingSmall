@@ -12,23 +12,23 @@ from ludwigcluster.utils import list_all_param2vals
 LOCAL = False
 VERBOSE = True
 
-# TAG = 'sem_ordered_ba_layer_0'
-# TAG = 'sem_tf-f1_layer_0_summary'
-TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
+TAGS = ['sem_ordered_ba_layer_0', 'sem_tf-f1_layer_0_summary']
+# TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
 
-REVERSE_COLORS = False
+REVERSE_COLORS = True
 Y_THRESHOLD = 0
 NUM_X = 10 + 1
 FIGSIZE = (6, 4)
-YLIMs = [0., 0.1]
 
 
-tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy'),
-            'sem_probes_wx_sim': (True, 'Avg Cosine-Sim. of Probes in Wx'),
-            'sem_nouns_wy_sim': (True, 'Avg Cosine-Sim. of Nouns in Wy'),
-            'sem_nouns_wx_sim': (True, 'Avg Cosine-Sim. of Nouns in Wx'),
-            'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy'),
-            'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx')}
+tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 0.1]),
+            'sem_probes_wx_sim': (True, 'Avg Cosine-Sim. of Probes in Wx', [0., 0.1]),
+            'sem_nouns_wy_sim': (True, 'Avg Cosine-Sim. of Nouns in Wy', [0., 0.1]),
+            'sem_nouns_wx_sim': (True, 'Avg Cosine-Sim. of Nouns in Wx', [0., 0.1]),
+            'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy', [0., 0.1]),
+            'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
+            'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
+            'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.5, 0.8])}
 
 
 default_dict = MatchParams.__dict__.copy()
@@ -36,6 +36,7 @@ MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
 MatchParams.num_iterations = [[20, 20]]
+MatchParams.flavor = ['lstm']
 
 
 def gen_param_ps(param2requested, param2default):
@@ -149,6 +150,7 @@ for tag in TAGS:
 
     # plot
     ylabel = tag2info[tag][1]
+    ylims = tag2info[tag][2]
     fig = make_summary_trajs_fig(summary_data, ylabel,
-                                 figsize=FIGSIZE, ylims=YLIMs, reverse_colors=REVERSE_COLORS)
+                                 figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS)
     fig.show()
