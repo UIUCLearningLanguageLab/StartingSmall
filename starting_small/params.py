@@ -11,7 +11,7 @@ class Params:
     probes_name = ['childes-20180319_4096']
     num_types = [4096]
     part_order = ['inc_age', 'dec_age']  # 'shuffled_age', 'unordered_age', 'midinc_age', 'middec_age'
-    num_iterations = [[20, 20]]  #[20, 20], [30, 10], [10, 30]]
+    num_iterations = [[10, 30], [30, 10]]  # [20, 20], [30, 10], [10, 30]]
     reinit = [None]
     # reinit = [None, 'all_10_w', 'all_10_a', 'all_90_w', 'all_90_a']  # w=weights, a=adagrad b=bias
     num_saves = [10]
@@ -19,7 +19,7 @@ class Params:
     num_layers = [1]  # default: 1
     mb_size = [64]
     lr = [0.01]
-    flavor = ['lstm']  # rnn, lstm, deltarnn, fahlmanrnn
+    flavor = ['rnn']  # rnn, lstm, deltarnn, fahlmanrnn
     optimizer = ['adagrad']
     embed_size = [512]  # default: 512
     wx_init = ['random']

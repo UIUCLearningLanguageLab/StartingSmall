@@ -13,7 +13,8 @@ def human_format(num, pos):  # pos is required for formatting mpl axis ticklabel
     return '{}{}'.format(num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 
-def make_summary_trajs_fig(summary_data, traj_name, figsize=None, ylims=None, reverse_colors=False):
+def make_summary_trajs_fig(summary_data, traj_name, figsize=None, ylims=None, reverse_colors=False,
+                           alternative_labels=None):
     # fig
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_xlabel('Mini Batch', fontsize=config.Figs.axlabel_fs)
@@ -32,6 +33,8 @@ def make_summary_trajs_fig(summary_data, traj_name, figsize=None, ylims=None, re
     else:
         palette = iter(sns.color_palette('hls', num_summaries))
     for x, mean_traj, std_traj, label, n in summary_data:
+        if alternative_labels is not None:
+            label = next(alternative_labels)
         ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette),
                 label=label + '\nn={}'.format(n))
         ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')

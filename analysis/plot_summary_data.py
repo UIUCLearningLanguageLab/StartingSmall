@@ -12,10 +12,11 @@ from ludwigcluster.utils import list_all_param2vals
 LOCAL = False
 VERBOSE = True
 
-TAGS = ['sem_ordered_ba_layer_0', 'sem_tf-f1_layer_0_summary']
+TAGS = ['mean_ap_nouns']
 # TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
 
-REVERSE_COLORS = True
+ALTERNATIVE_LABELS = None  # iter(['reverse age-ordered', 'age-ordered'])  # or None
+REVERSE_COLORS = False
 Y_THRESHOLD = 0
 NUM_X = 10 + 1
 FIGSIZE = (6, 4)
@@ -27,6 +28,7 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_nouns_wx_sim': (True, 'Avg Cosine-Sim. of Nouns in Wx', [0., 0.1]),
             'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy', [0., 0.1]),
             'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
+            'mean_ap_nouns': (False, 'Average Precision (predicting nouns)', [0.4, 0.6]),
             'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
             'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.5, 0.8])}
 
@@ -36,7 +38,7 @@ MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
 MatchParams.num_iterations = [[20, 20]]
-MatchParams.flavor = ['lstm']
+MatchParams.flavor = ['rnn']
 
 
 def gen_param_ps(param2requested, param2default):
@@ -152,5 +154,6 @@ for tag in TAGS:
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
     fig = make_summary_trajs_fig(summary_data, ylabel,
-                                 figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS)
+                                 figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
+                                 alternative_labels=ALTERNATIVE_LABELS)
     fig.show()
