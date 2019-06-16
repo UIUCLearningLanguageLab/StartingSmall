@@ -10,16 +10,17 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 LOCAL = False
-VERBOSE = True
+VERBOSE = False
 
-TAGS = ['mean_ap_nouns']
+EXCLUDE_SUMMARY_IDS = [2, 4]
+TAGS = ['sem_ordered_ba_layer_0']
 # TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
 
 ALTERNATIVE_LABELS = None  # iter(['reverse age-ordered', 'age-ordered'])  # or None
-REVERSE_COLORS = False
+REVERSE_COLORS = True
 Y_THRESHOLD = 0
 NUM_X = 10 + 1
-FIGSIZE = (6, 4)
+FIGSIZE = (8, 8) # 6, 4
 
 
 tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 0.1]),
@@ -30,14 +31,14 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
             'mean_ap_nouns': (False, 'Average Precision (predicting nouns)', [0.4, 0.6]),
             'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
-            'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.5, 0.8])}
+            'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.5, 0.75])}
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
-MatchParams.num_iterations = [[20, 20]]
+MatchParams.num_iterations = [[30, 10], [20, 20], [10, 30]]
 MatchParams.flavor = ['rnn']
 
 
@@ -46,9 +47,11 @@ def gen_param_ps(param2requested, param2default):
                       if val != param2default[param]]
 
     runs_p = config.LocalDirs.runs.glob('*') if LOCAL else config.RemoteDirs.runs.glob('param_*')
-    print('WARNING: Looking for runs locally')
+    if LOCAL:
+        print('WARNING: Looking for runs locally')
 
     for param_p in runs_p:
+
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
@@ -101,8 +104,6 @@ def get_xs_and_ys_for_param(param_p, tag):
                 y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
                      if simple_val is not None]
 
-            print('y:')
-            print(y)
             print('Read {} events'.format(len(x)))
             if len(x) != NUM_X or len(y) != NUM_X:
                 continue
@@ -135,9 +136,7 @@ for tag in TAGS:
     summary_data = []
     for param_p, label in gen_param_ps(MatchParams, default_dict):
         xs, ys = get_xs_and_ys_for_param(param_p, tag)
-        if VERBOSE:
-            print('ys:')
-            print(ys)
+
         if xs and ys and np.mean(ys, axis=0)[-1] >= Y_THRESHOLD:
             summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
         else:
@@ -150,10 +149,19 @@ for tag in TAGS:
     if not summary_data:
         raise SystemExit('No data found')
 
+    # filter data
+    summary_data_filtered = [d for n, d in enumerate(summary_data) if n not in EXCLUDE_SUMMARY_IDS]
+
+
     # plot
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
-    fig = make_summary_trajs_fig(summary_data, ylabel,
+    fig = make_summary_trajs_fig(summary_data_filtered, ylabel,
                                  figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
                                  alternative_labels=ALTERNATIVE_LABELS)
     fig.show()
+
+
+#  reminder
+if EXCLUDE_SUMMARY_IDS is not None or EXCLUDE_SUMMARY_IDS is not []:
+    print('WARNING: EXCLUDE_SUMMARY_IDS={}'.format(EXCLUDE_SUMMARY_IDS))
