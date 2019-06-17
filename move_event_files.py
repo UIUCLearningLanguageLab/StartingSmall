@@ -17,8 +17,7 @@ KEY = 'num_saves'
 VALUE = 10
 MAX_NUM_REP = 5
 PARAMS_TO_DISPLAY = ['part_order',
-                     'num_parts',
-                     'num_iterations']
+                     'num_parts']
 
 LOCAL_ROOT_P = Path('')
 

@@ -12,15 +12,16 @@ from ludwigcluster.utils import list_all_param2vals
 LOCAL = False
 VERBOSE = False
 
-EXCLUDE_SUMMARY_IDS = [2, 4]
-TAGS = ['sem_ordered_ba_layer_0']
+EXCLUDE_SUMMARY_IDS = []
+TAGS = ['mean_pp']
+NUM_PP_DATA_POINTS = 128
 # TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
 
-ALTERNATIVE_LABELS = None  # iter(['reverse age-ordered', 'age-ordered'])  # or None
+TITLE = None  # 'Training in reverse age-order'  # or None
+ALTERNATIVE_LABELS = None  # ['iterations=30-10', 'iterations=20-20', 'iterations=10-30']  # or None
 REVERSE_COLORS = True
-Y_THRESHOLD = 0
 NUM_X = 10 + 1
-FIGSIZE = (8, 8) # 6, 4
+FIGSIZE = (8, 6)  # 6, 4
 
 
 tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 0.1]),
@@ -30,15 +31,18 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy', [0., 0.1]),
             'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
             'mean_ap_nouns': (False, 'Average Precision (predicting nouns)', [0.4, 0.6]),
+            'mean_pp': (False, 'Training Perplexity (mini-batches)', [0.0, 200]),
             'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
-            'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.5, 0.75])}
+            'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.6, 0.75])}
 
 
 default_dict = MatchParams.__dict__.copy()
+default_dict['part_order'] = 'setting this to a random string ensures that part_order=inc_age shows up in legend'
+
 MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.num_parts = [2]
 MatchParams.optimizer = ['adagrad']
-MatchParams.num_iterations = [[30, 10], [20, 20], [10, 30]]
+MatchParams.num_iterations = [[20, 20]]
 MatchParams.flavor = ['rnn']
 
 
@@ -51,7 +55,6 @@ def gen_param_ps(param2requested, param2default):
         print('WARNING: Looking for runs locally')
 
     for param_p in runs_p:
-
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f)
@@ -104,12 +107,21 @@ def get_xs_and_ys_for_param(param_p, tag):
                 y = [simple_val for simple_val in [get_simple_val(event, tag) for event in events]
                      if simple_val is not None]
 
+            # average mean-pp (thee is one for each batch rather than each eval time point)
+            if tag == 'mean_pp':
+                x_avg = []
+                y_avg = []
+                for x_chunk, y_chunk in zip(np.array_split(x, NUM_PP_DATA_POINTS),
+                                            np.array_split(y, NUM_PP_DATA_POINTS)):
+                    x_avg.append(x_chunk[-1])
+                    y_avg.append(y_chunk.mean())
+                x = x_avg
+                y = y_avg
+
             print('Read {} events'.format(len(x)))
-            if len(x) != NUM_X or len(y) != NUM_X:
-                continue
-            else:
-                xs.append(x)
-                ys.append(y)
+            xs.append(x)
+            ys.append(y)
+
     return xs, ys
 
 
@@ -132,17 +144,12 @@ def get_simple_val(event, tag):
 
 for tag in TAGS:
 
-    # summary_data
+    # collect data
     summary_data = []
     for param_p, label in gen_param_ps(MatchParams, default_dict):
         xs, ys = get_xs_and_ys_for_param(param_p, tag)
-
-        if xs and ys and np.mean(ys, axis=0)[-1] >= Y_THRESHOLD:
-            summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
-        else:
-            print('Does not pass threshold')
+        summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
         print('--------------------- END param_p\n\n')
-
 
     # sort data
     summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
@@ -152,13 +159,13 @@ for tag in TAGS:
     # filter data
     summary_data_filtered = [d for n, d in enumerate(summary_data) if n not in EXCLUDE_SUMMARY_IDS]
 
-
     # plot
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
-    fig = make_summary_trajs_fig(summary_data_filtered, ylabel,
+    alternative_labels = iter(ALTERNATIVE_LABELS) if ALTERNATIVE_LABELS is not None else None
+    fig = make_summary_trajs_fig(summary_data_filtered, ylabel, title=TITLE,
                                  figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
-                                 alternative_labels=ALTERNATIVE_LABELS)
+                                 alternative_labels=alternative_labels)
     fig.show()
 
 
