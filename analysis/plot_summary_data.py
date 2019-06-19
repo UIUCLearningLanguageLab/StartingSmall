@@ -10,18 +10,20 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 LOCAL = False
-VERBOSE = False
+VERBOSE = True
+ONE_RUN_PER_PARAM = False
 
 EXCLUDE_SUMMARY_IDS = []
-TAGS = ['mean_pp']
+TAGS = ['sem_ordered_ba_layer_0']
 NUM_PP_DATA_POINTS = 128
-# TAGS = ['sem_probes_wx_sim', 'sem_probes_wy_sim', 'sem_nouns_wx_sim', 'sem_nouns_wy_sim']
 
+TOLERANCE = 0.03  # correct trajectory when ba drops more than this value
+
+VLINES = None  # [0, 1, 2, 3]
 TITLE = None  # 'Training in reverse age-order'  # or None
-ALTERNATIVE_LABELS = None  # ['iterations=30-10', 'iterations=20-20', 'iterations=10-30']  # or None
+ALTERNATIVE_LABELS = ['shuffled', 'age-order', 'reverse age-order']  # or None
 REVERSE_COLORS = True
-NUM_X = 10 + 1
-FIGSIZE = (8, 6)  # 6, 4
+FIGSIZE = (6, 4)  # 6, 4
 
 
 tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 0.1]),
@@ -31,16 +33,18 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy', [0., 0.1]),
             'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
             'mean_ap_nouns': (False, 'Average Precision (predicting nouns)', [0.4, 0.6]),
-            'mean_pp': (False, 'Training Perplexity (mini-batches)', [0.0, 200]),
+            'mean_pp': (False, 'Perplexity\n(of mini-batch before weight update)', [0.0, 200]),
             'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
             'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.6, 0.75])}
 
 
 default_dict = MatchParams.__dict__.copy()
 default_dict['part_order'] = 'setting this to a random string ensures that part_order=inc_age shows up in legend'
+default_dict['shuffle_docs'] = 'setting this to a random string ensures that shuffle_docs=False shows up in legend'
 
-MatchParams.part_order = ['dec_age', 'inc_age']
-MatchParams.num_parts = [2]
+MatchParams.num_parts = [256]
+MatchParams.shuffle_docs = [False]
+MatchParams.part_order = ['dec_age', 'inc_age', 'shuffled_age']
 MatchParams.optimizer = ['adagrad']
 MatchParams.num_iterations = [[20, 20]]
 MatchParams.flavor = ['rnn']
@@ -63,8 +67,9 @@ def gen_param_ps(param2requested, param2default):
         del param2val['param_name']
         del param2val['job_name']
         if param2val in match_param2vals:
-            print('Param2val matches')
             label = '\n'.join(['{}={}'.format(param, param2val[param]) for param in compare_params])
+            print('Param2val matches')
+            print(label)
             yield param_p, label
         else:
             print('Params do not match')
@@ -78,6 +83,17 @@ def print_tags(events):
     print(tags)
 
 
+def correct_artifacts(y):
+    # correct for ba algorithm - it results in negative spikes occasionally
+    res = np.asarray(y)
+    for i in range(len(res) - 2):
+        val1, val2, val3 = res[[i, i+1, i+2]]
+        print(val1, val2, val3)
+        if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
+            res[i+1] = np.mean([val1, val3])
+    return res.tolist()
+
+
 def get_xs_and_ys_for_param(param_p, tag):
     if LOCAL:
         events_ps = list(param_p.glob('*events*'))
@@ -88,7 +104,7 @@ def get_xs_and_ys_for_param(param_p, tag):
     xs = []
     ys = []
     #
-    for i, events_p in enumerate(events_ps):
+    for i, events_p in enumerate(events_ps):  # one event file for each job in params_p
         try:
             events = list(tf.train.summary_iterator(str(events_p)))
         except DataLossError:
@@ -98,6 +114,7 @@ def get_xs_and_ys_for_param(param_p, tag):
             if VERBOSE:
                 print_tags(events)
             x = np.unique([event.step for event in events])
+            print('Reading {} events'.format(len(x)))
             # get values
             is_histogram = tag2info[tag][0]
             if is_histogram:
@@ -117,10 +134,21 @@ def get_xs_and_ys_for_param(param_p, tag):
                     y_avg.append(y_chunk.mean())
                 x = x_avg
                 y = y_avg
+            else:
+                x = np.linspace(0, np.max(x), len(y))  # all x are  1.6M long when summarize_train_pp=True
 
-            print('Read {} events'.format(len(x)))
+            if 'ba' in tag:
+                y = correct_artifacts(y)
+
+            if VERBOSE:
+                print(y)
+
             xs.append(x)
             ys.append(y)
+
+        if ONE_RUN_PER_PARAM:
+            print('WARNING: Retrieving results for only one job per parameter configuration.')
+            break
 
     return xs, ys
 
@@ -149,7 +177,7 @@ for tag in TAGS:
     for param_p, label in gen_param_ps(MatchParams, default_dict):
         xs, ys = get_xs_and_ys_for_param(param_p, tag)
         summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
-        print('--------------------- END param_p\n\n')
+        print('--------------------- END {}\n\n'.format(param_p.name))
 
     # sort data
     summary_data = sorted(summary_data, key=lambda data: data[1][-1], reverse=True)
@@ -159,13 +187,18 @@ for tag in TAGS:
     # filter data
     summary_data_filtered = [d for n, d in enumerate(summary_data) if n not in EXCLUDE_SUMMARY_IDS]
 
+    # print to console
+    for sd in summary_data_filtered:
+        _, _, _, label, _ = sd
+        print(label)
+
     # plot
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
     alternative_labels = iter(ALTERNATIVE_LABELS) if ALTERNATIVE_LABELS is not None else None
     fig = make_summary_trajs_fig(summary_data_filtered, ylabel, title=TITLE,
                                  figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
-                                 alternative_labels=alternative_labels)
+                                 alternative_labels=alternative_labels, vlines=VLINES)
     fig.show()
 
 

@@ -11,7 +11,7 @@ rsync -r --exclude="__pycache__" --max-size=1m --progress /home/ph/CHILDESHub/ch
 echo "Submitting to Ludwig..."
 cd /home/ph/StartingSmall
 source venv/bin/activate
-python submit.py -r5 -s
+python submit.py -r10 -s
 deactivate
 echo "Submission completed"
 

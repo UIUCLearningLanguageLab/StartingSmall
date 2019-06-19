@@ -23,7 +23,7 @@ class Eval:
     summarize_sim = True
     summarize_misc = False
     summarize_h = False
-    summarize_train_pp = True
+    summarize_train_pp = False
     summarize_pr = False
     #
     verbose_opt = True

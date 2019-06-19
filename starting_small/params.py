@@ -8,9 +8,10 @@ class ObjectView(object):
 class Params:
     num_parts = [2]  # default: 2, 4 is required to manifest part_order=midinc_age
     corpus_name = ['childes-20180319']
-    probes_name = ['childes-20180319_4096']
+    probes_name = ['complete']  # TODO childes-20180319_4096
     num_types = [4096]
-    part_order = ['inc_age', 'dec_age']  # 'shuffled_age', 'unordered_age', 'midinc_age', 'middec_age'
+    shuffle_docs = [False]
+    part_order = ['inc_age', 'dec_age', 'shuffled_age']  # 'shuffled_age', 'unordered_age', 'midinc_age', 'middec_age'
     num_iterations = [[20, 20]]  # [20, 20], [30, 10], [10, 30]]
     reinit = [None]
     # reinit = [None, 'all_10_w', 'all_10_a', 'all_90_w', 'all_90_a']  # w=weights, a=adagrad b=bias
@@ -30,6 +31,7 @@ class DefaultParams:
     corpus_name = ['childes-20180319']
     probes_name = ['childes-20180319_4096']
     num_types = [4096]
+    shuffle_docs = [False]
     part_order = ['inc_age']
     num_iterations = [[20, 20]]
     reinit = [None]

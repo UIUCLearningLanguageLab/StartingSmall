@@ -14,7 +14,8 @@ def human_format(num, pos):  # pos is required for formatting mpl axis ticklabel
 
 
 def make_summary_trajs_fig(summary_data, traj_name, title=None,
-                           figsize=None, ylims=None, reverse_colors=False, alternative_labels=None):
+                           figsize=None, ylims=None, reverse_colors=False,
+                           plot_max_line=False, alternative_labels=None, vlines=None):
     # fig
     fig, ax = plt.subplots(figsize=figsize)
     if title is not None:
@@ -40,15 +41,18 @@ def make_summary_trajs_fig(summary_data, traj_name, title=None,
         if alternative_labels is not None:
             label = next(alternative_labels)
         ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette),
-                label=label + '\nn={}'.format(n))
+                label=label + '\nn={}'.format(n), zorder=3 if n == 8 else 2)
         ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')
     if title:
         plt.legend(fontsize=config.Figs.leg_fs, frameon=False, loc='lower right', ncol=1)
     else:
         plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0,
                    fontsize=config.Figs.leg_fs, frameon=False, loc='lower right', ncol=3)
-
-    ax.axhline(y=max(max_ys), color='grey', linestyle=':', zorder=1)
+    if plot_max_line:
+        ax.axhline(y=max(max_ys), color='grey', linestyle=':', zorder=1)
+    if vlines:
+        for vline in vlines:
+            ax.axvline(x=x[-1] * (vline / len(vlines)) , color='grey', linestyle=':', zorder=1)
 
     plt.tight_layout()
     return fig
