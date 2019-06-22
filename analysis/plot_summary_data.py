@@ -10,7 +10,7 @@ from starting_small.params import DefaultParams as MatchParams
 from ludwigcluster.utils import list_all_param2vals
 
 LOCAL = False
-VERBOSE = True
+VERBOSE = False
 ONE_RUN_PER_PARAM = False
 
 EXCLUDE_SUMMARY_IDS = []
@@ -19,9 +19,10 @@ NUM_PP_DATA_POINTS = 128
 
 TOLERANCE = 0.03  # correct trajectory when ba drops more than this value
 
-VLINES = None  # [0, 1, 2, 3]
+PLOT_MAX_LINES = True
+VLINES = []  #[0, 1, 3]  # [0, 1, 2, 3]
 TITLE = None  # 'Training in reverse age-order'  # or None
-ALTERNATIVE_LABELS = ['shuffled', 'age-order', 'reverse age-order']  # or None
+ALTERNATIVE_LABELS = ['transcripts shuffled', 'transcripts shuffled +\norder reversed']  # or None
 REVERSE_COLORS = True
 FIGSIZE = (6, 4)  # 6, 4
 
@@ -42,9 +43,9 @@ default_dict = MatchParams.__dict__.copy()
 default_dict['part_order'] = 'setting this to a random string ensures that part_order=inc_age shows up in legend'
 default_dict['shuffle_docs'] = 'setting this to a random string ensures that shuffle_docs=False shows up in legend'
 
-MatchParams.num_parts = [256]
-MatchParams.shuffle_docs = [False]
-MatchParams.part_order = ['dec_age', 'inc_age', 'shuffled_age']
+MatchParams.num_parts = [2]
+MatchParams.shuffle_docs = [True]
+MatchParams.part_order = ['inc_age', 'dec_age']
 MatchParams.optimizer = ['adagrad']
 MatchParams.num_iterations = [[20, 20]]
 MatchParams.flavor = ['rnn']
@@ -88,7 +89,6 @@ def correct_artifacts(y):
     res = np.asarray(y)
     for i in range(len(res) - 2):
         val1, val2, val3 = res[[i, i+1, i+2]]
-        print(val1, val2, val3)
         if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
             res[i+1] = np.mean([val1, val3])
     return res.tolist()
@@ -193,12 +193,14 @@ for tag in TAGS:
         print(label)
 
     # plot
+    print()
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
     alternative_labels = iter(ALTERNATIVE_LABELS) if ALTERNATIVE_LABELS is not None else None
     fig = make_summary_trajs_fig(summary_data_filtered, ylabel, title=TITLE,
                                  figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
-                                 alternative_labels=alternative_labels, vlines=VLINES)
+                                 alternative_labels=alternative_labels, vlines=VLINES,
+                                 plot_max_lines=PLOT_MAX_LINES)
     fig.show()
 
 
