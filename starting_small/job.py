@@ -23,6 +23,8 @@ from starting_small.summaries import write_sim_summaries
 class Params:
 
     def __init__(self, param2val):
+        param2val = param2val.copy()
+
         self.param_name = param2val.pop('param_name')
         self.job_name = param2val.pop('job_name')
 
