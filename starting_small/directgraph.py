@@ -132,7 +132,7 @@ class DirectGraph:
             self.softmax_probs = tf.nn.softmax(logit)
             self.pred_ys = tf.argmax(self.softmax_probs, axis=1)
             self.pps = tf.exp(loss)
-            self.mean_pp = tf.exp(tf.reduce_mean(loss))  # used too calc test docs pp
+            self.batch_pp = tf.exp(tf.reduce_mean(loss))  # used too calc test docs pp
             self.wy = wy
             self.wx = wx
             self.hs = hs
@@ -181,8 +181,8 @@ class DirectGraph:
                 [tf.summary.histogram(k, v) for k, v in self.sim_name2placeholder.items()])
             self.ap_summaries = tf.summary.merge(
                 [tf.summary.scalar(k, v) for k, v in self.ap_name2placeholder.items()])
-            self.misc_summaries = tf.summary.merge(
-                [tf.summary.histogram('wx_term_sims', self.wx_term_sims_summary),
+            self.pp_summaries = tf.summary.merge(
+                [tf.summary.scalar('train_pp', self.train_pp_summary),
                  tf.summary.scalar('test_pp', self.test_pp_summary)])
             self.h_summaries = tf.summary.merge(
                 [tf.summary.histogram(k, v) for k, v in self.h_name2placeholder.items()])
@@ -200,7 +200,7 @@ class DirectGraph:
                     for name, (labels, predictions) in self.pr_name2placeholders.items()])
 
             # do this every batch
-            self.mean_pp_summary = tf.summary.scalar('mean_pp', self.mean_pp)
+            self.batch_pp_summary = tf.summary.scalar('batch_pp', self.batch_pp)
 
     @property
     def cell(self):

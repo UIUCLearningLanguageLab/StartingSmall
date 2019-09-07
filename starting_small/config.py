@@ -18,12 +18,12 @@ class LocalDirs:
 class Eval:
     debug = False
     #
-    summarize_cluster2 = True
-    summarize_ap = True
-    summarize_sim = True
-    summarize_misc = False
+    summarize_cluster2 = False
+    summarize_ap = False
+    summarize_sim = False
+    summarize_pp = False  # TODO test
     summarize_h = False
-    summarize_train_pp = False
+    summarize_batch_pp = False  # pp at every batch (this results in a long events file)
     summarize_pr = False
     #
     verbose_opt = True

@@ -5,7 +5,7 @@ from ludwigcluster.config import SFTP
 from ludwigcluster.utils import list_all_param2vals
 
 from starting_small import config 
-from starting_small.params import Params
+from starting_small.params import param2requests, param2defaults
 
 
 if __name__ == '__main__':
@@ -31,14 +31,11 @@ if __name__ == '__main__':
     if namespace.preprocess:
         raise NotImplementedError
 
-    # make list of hyperparameter configurations to submit
     if namespace.debug:
         print('WARNING: Debugging is on.')
-        Params.num_iterations = [[1, 1]]
-        Params.embed_size = [32]
-        Params.bptt_steps = [1]
-        Params.num_saves = [1]
-    param2val_list = list_all_param2vals(Params)
+
+    # make list of hyper-parameter configurations to submit
+    param2val_list = list_all_param2vals(param2requests, param2defaults)
 
     # submit to cluster
     data_dirs = [] if not namespace.skip_data else []  # this data is copied to file server not workers

@@ -9,21 +9,28 @@ from starting_small.params import DefaultParams as MatchParams
 
 from ludwigcluster.utils import list_all_param2vals
 
+# global
 LOCAL = False
 VERBOSE = False
+
+# data
 ONE_RUN_PER_PARAM = False
 
 EXCLUDE_SUMMARY_IDS = []
-TAGS = ['sem_ordered_ba_layer_0']
+TAGS = ['syn_ordered_ba_layer_0']
 NUM_PP_DATA_POINTS = 128
 
 TOLERANCE = 0.03  # correct trajectory when ba drops more than this value
 
+# figure
+LABEL_N = False
 PLOT_MAX_LINES = True
-VLINES = []  #[0, 1, 3]  # [0, 1, 2, 3]
-TITLE = None  # 'Training in reverse age-order'  # or None
-ALTERNATIVE_LABELS = ['transcripts shuffled', 'transcripts shuffled +\norder reversed']  # or None
+PLOT_MAX_LINE = True
+PALETTE_IDS = None  # [1, 0, 2]
 REVERSE_COLORS = True
+VLINES = None  # [0, 1, 2, 3]
+TITLE = None  # 'Training in reverse age-order'  # or None
+ALTERNATIVE_LABELS = ['age-order', 'reverse age-order', ]  # or None
 FIGSIZE = (6, 4)  # 6, 4
 
 
@@ -34,18 +41,20 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_terms_wy_sim': (True, 'Avg Cosine-Sim. of all words in Wy', [0., 0.1]),
             'sem_terms_wx_sim': (True, 'Avg Cosine-Sim. of all words in Wx', [0., 0.1]),
             'mean_ap_nouns': (False, 'Average Precision (predicting nouns)', [0.4, 0.6]),
-            'mean_pp': (False, 'Perplexity\n(of mini-batch before weight update)', [0.0, 200]),
+            'train_pp': (False, 'Perplexity\n(of training corpus)', [40.0, 60]),
+            'test_pp': (False, 'Perplexity\n(of test corpus)', [45, 55]),
+            'batch_pp': (False, 'Perplexity\n(of mini-batch before weight update)', [0.0, 200]),
             'sem_tf-f1_layer_0_summary': (False, 'F1', [0.0, 0.4]),
+            'syn_ordered_ba_layer_0': (False, 'Balanced accuracy\n(syntactic categories)', [0.6, 0.70]),
             'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.6, 0.75])}
 
 
 default_dict = MatchParams.__dict__.copy()
 default_dict['part_order'] = 'setting this to a random string ensures that part_order=inc_age shows up in legend'
-default_dict['shuffle_docs'] = 'setting this to a random string ensures that shuffle_docs=False shows up in legend'
 
 MatchParams.num_parts = [2]
-MatchParams.shuffle_docs = [True]
-MatchParams.part_order = ['inc_age', 'dec_age']
+MatchParams.shuffle_docs = [False]
+MatchParams.part_order = ['dec_age', 'inc_age']
 MatchParams.optimizer = ['adagrad']
 MatchParams.num_iterations = [[20, 20]]
 MatchParams.flavor = ['rnn']
@@ -91,6 +100,7 @@ def correct_artifacts(y):
         val1, val2, val3 = res[[i, i+1, i+2]]
         if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
             res[i+1] = np.mean([val1, val3])
+            print('Adjusting {} to {}'.format(val2, np.mean([val1, val3])))
     return res.tolist()
 
 
@@ -125,7 +135,7 @@ def get_xs_and_ys_for_param(param_p, tag):
                      if simple_val is not None]
 
             # average mean-pp (thee is one for each batch rather than each eval time point)
-            if tag == 'mean_pp':
+            if tag == 'batch_pp':
                 x_avg = []
                 y_avg = []
                 for x_chunk, y_chunk in zip(np.array_split(x, NUM_PP_DATA_POINTS),
@@ -177,6 +187,7 @@ for tag in TAGS:
     for param_p, label in gen_param_ps(MatchParams, default_dict):
         xs, ys = get_xs_and_ys_for_param(param_p, tag)
         summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
+        print(np.mean(ys, axis=0)[-1], np.std(ys, axis=0)[-1])
         print('--------------------- END {}\n\n'.format(param_p.name))
 
     # sort data
@@ -193,14 +204,20 @@ for tag in TAGS:
         print(label)
 
     # plot
-    print()
     ylabel = tag2info[tag][1]
     ylims = tag2info[tag][2]
     alternative_labels = iter(ALTERNATIVE_LABELS) if ALTERNATIVE_LABELS is not None else None
-    fig = make_summary_trajs_fig(summary_data_filtered, ylabel, title=TITLE,
-                                 figsize=FIGSIZE, ylims=ylims, reverse_colors=REVERSE_COLORS,
-                                 alternative_labels=alternative_labels, vlines=VLINES,
-                                 plot_max_lines=PLOT_MAX_LINES)
+    fig = make_summary_trajs_fig(summary_data_filtered, ylabel,
+                                 title=TITLE,
+                                 palette_ids=PALETTE_IDS,
+                                 figsize=FIGSIZE,
+                                 ylims=ylims,
+                                 reverse_colors=REVERSE_COLORS,
+                                 alternative_labels=alternative_labels,
+                                 vlines=VLINES,
+                                 plot_max_lines=PLOT_MAX_LINES,
+                                 plot_max_line=PLOT_MAX_LINE,
+                                 label_n=LABEL_N)
     fig.show()
 
 

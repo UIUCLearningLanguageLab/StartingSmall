@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import seaborn as sns
+import numpy as np
 
 from starting_small import config
 
@@ -13,9 +14,10 @@ def human_format(num, pos):  # pos is required for formatting mpl axis ticklabel
     return '{}{}'.format(num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 
-def make_summary_trajs_fig(summary_data, traj_name, title=None,
+def make_summary_trajs_fig(summary_data, traj_name, title=None, palette_ids=None,
                            figsize=None, ylims=None, reverse_colors=False, y_grid=False,
-                           plot_max_line=False, plot_max_lines=False, alternative_labels=None, vlines=None):
+                           plot_max_line=False, plot_max_lines=False, alternative_labels=None,
+                           vlines=None, label_n=True):
     # fig
     fig, ax = plt.subplots(figsize=figsize)
     if title is not None:
@@ -34,9 +36,13 @@ def make_summary_trajs_fig(summary_data, traj_name, title=None,
     # palette
     num_summaries = len(summary_data)
     if reverse_colors:
-        palette = iter(sns.color_palette('hls', num_summaries)[::-1])
+        palette = np.asarray(sns.color_palette('hls', num_summaries)[::-1])
     else:
-        palette = iter(sns.color_palette('hls', num_summaries))
+        palette = np.asarray(sns.color_palette('hls', num_summaries))
+    if palette_ids is not None:
+        colors = iter(palette[palette_ids])
+    else:
+        colors = iter(palette)
 
     # plot summary
     max_ys = []
@@ -44,8 +50,9 @@ def make_summary_trajs_fig(summary_data, traj_name, title=None,
         max_ys.append(max(mean_traj))
         if alternative_labels is not None:
             label = next(alternative_labels)
-        ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(palette),
-                label=label + '\nn={}'.format(n), zorder=3 if n == 8 else 2)
+            label += '\nn={}'.format(n) if label_n else ''
+        ax.plot(x, mean_traj, '-', linewidth=config.Figs.lw, color=next(colors),
+                label=label, zorder=3 if n == 8 else 2)
         ax.fill_between(x, mean_traj + std_traj, mean_traj - std_traj, alpha=0.5, color='grey')
 
     # legend
@@ -58,7 +65,7 @@ def make_summary_trajs_fig(summary_data, traj_name, title=None,
     # max line
     if plot_max_line:
         ax.axhline(y=max(max_ys), color='grey', linestyle=':', zorder=1)
-    elif plot_max_lines:
+    if plot_max_lines:
         for max_y in max_ys:
             ax.axhline(y=max_y, color='grey', linestyle=':', zorder=1)
             print('y max={}'.format(max_y))

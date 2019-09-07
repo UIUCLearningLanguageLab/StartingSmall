@@ -35,14 +35,12 @@ def write_ap_summaries(hub, graph, sess, data_mb, summary_writer):
     summary_writer.add_summary(summary, data_mb)
 
 
-def write_misc_summaries(hub, graph, sess, data_mb, summary_writer):
-    print('Making misc_summaries...')
+def write_pp_summaries(hub, graph, sess, data_mb, summary_writer):
+    print('Making pp_summaries...')
     fd = dict()
-    fd[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)  # no need for train_pp
-    wx_term_acts = sess.run(graph.wx)
-    wx_term_sims = cosine_similarity(wx_term_acts)
-    fd[graph.wx_term_sims_summary] = wx_term_sims[np.triu_indices(len(wx_term_sims), k=1)]
-    summary = sess.run(graph.misc_summaries, feed_dict=fd)
+    fd[graph.train_pp_summary] = calc_pp(hub, graph, sess, False)
+    fd[graph.test_pp_summary] = calc_pp(hub, graph, sess, True)
+    summary = sess.run(graph.pp_summaries, feed_dict=fd)
     summary_writer.add_summary(summary, data_mb)
 
 

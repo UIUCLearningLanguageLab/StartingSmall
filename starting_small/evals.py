@@ -35,6 +35,9 @@ def calc_w_term_sims(hub, graph, sess, word_type, w_name):
         raise AttributeError('rnnlab: Invalid arg to "w_name"')
     #
     sims = cosine_similarity(w_filtered, w_filtered).mean(axis=1)
+
+    # TODO save memory by returning only upper triangle?  upper_triang = mat[np.triu_indices(len(mat), k=1)]
+
     print('{} {} mean_sim={}'.format(word_type, w_name, sims.mean()))
     return sims
 
@@ -156,6 +159,7 @@ def calc_cluster_score(hub, probe_sims, cluster_metric):
     # use best_thr
     results = fun(best_thr)
     res = np.mean(results)
+    print(res)
     return res
 
 
@@ -225,7 +229,7 @@ def calc_pp(hub, graph, sess, is_test):
     num_iterations_list = [1] * hub.params.num_parts
     for (x, y) in hub.gen_ids(num_iterations_list, is_test=is_test):
         pbar.update()
-        pp_batch = sess.run(graph.mean_pp, feed_dict={graph.x: x, graph.y: y})
+        pp_batch = sess.run(graph.batch_pp, feed_dict={graph.x: x, graph.y: y})
         pp_sum += pp_batch
         num_batches += 1
     pp = pp_sum / num_batches
