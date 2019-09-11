@@ -1,13 +1,12 @@
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import DataLossError
 import numpy as np
-import yaml
 
 from starting_small import config
 from starting_small.figs import make_summary_trajs_fig
-from starting_small.params import DefaultParams as MatchParams
+from starting_small.params import param2default, param2requests
 
-from ludwigcluster.utils import list_all_param2vals
+from ludwigcluster.client import Client
 
 # global
 LOCAL = False
@@ -49,40 +48,7 @@ tag2info = {'sem_probes_wy_sim': (True, 'Avg Cosine-Sim. of Probes in Wy', [0., 
             'sem_ordered_ba_layer_0': (False, 'Balanced accuracy', [0.6, 0.75])}
 
 
-default_dict = MatchParams.__dict__.copy()
-default_dict['part_order'] = 'setting this to a random string ensures that part_order=inc_age shows up in legend'
 
-MatchParams.num_parts = [2]
-MatchParams.shuffle_docs = [False]
-MatchParams.part_order = ['dec_age', 'inc_age']
-MatchParams.optimizer = ['adagrad']
-MatchParams.num_iterations = [[20, 20]]
-MatchParams.flavor = ['rnn']
-
-
-def gen_param_ps(param2requested, param2default):
-    compare_params = [param for param, val in param2requested.__dict__.items()
-                      if val != param2default[param]]
-
-    runs_p = config.LocalDirs.runs.glob('*') if LOCAL else config.RemoteDirs.runs.glob('param_*')
-    if LOCAL:
-        print('WARNING: Looking for runs locally')
-
-    for param_p in runs_p:
-        print('Checking {}...'.format(param_p))
-        with (param_p / 'param2val.yaml').open('r') as f:
-            param2val = yaml.load(f)
-        param2val = param2val.copy()
-        match_param2vals = list_all_param2vals(param2requested, add_names=False)
-        del param2val['param_name']
-        del param2val['job_name']
-        if param2val in match_param2vals:
-            label = '\n'.join(['{}={}'.format(param, param2val[param]) for param in compare_params])
-            print('Param2val matches')
-            print(label)
-            yield param_p, label
-        else:
-            print('Params do not match')
 
 
 def print_tags(events):
@@ -180,11 +146,14 @@ def get_simple_val(event, tag):
         return None
 
 
+client = Client(config.RemoteDirs.root.name, param2default)
+
+
 for tag in TAGS:
 
     # collect data
     summary_data = []
-    for param_p, label in gen_param_ps(MatchParams, default_dict):
+    for param_p, label in client.gen_param_ps(param2requests):
         xs, ys = get_xs_and_ys_for_param(param_p, tag)
         summary_data.append((xs[0], np.mean(ys, axis=0), np.std(ys, axis=0), label, len(ys)))
         print(np.mean(ys, axis=0)[-1], np.std(ys, axis=0)[-1])
