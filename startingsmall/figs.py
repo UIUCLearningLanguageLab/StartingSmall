@@ -3,7 +3,7 @@ from matplotlib.ticker import FuncFormatter
 import seaborn as sns
 import numpy as np
 
-from starting_small import config
+from startingsmall import config
 
 
 def human_format(num, pos):  # pos is required for formatting mpl axis ticklabels
