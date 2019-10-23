@@ -9,7 +9,7 @@ class RemoteDirs:
 
 class LocalDirs:
     root = Path(__file__).parent.parent
-    src = root / 'startingsmall'
+    src = Path(__file__).parent
     runs = root / '{}_runs'.format(src.name)
 
 
@@ -26,6 +26,11 @@ class Eval:
     context_types = ['ordered']  # none, ordered, shuffled, last
     category_structures = ['sem']  # sem, syn
     cluster_metrics = ['ba']  # ba, f1, ck
+
+
+class Metrics:
+    ba_o = 'ba_ordered'
+    ba_n = 'ba_none'
 
 
 class Figs:

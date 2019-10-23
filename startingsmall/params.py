@@ -1,20 +1,22 @@
 
 
 # specify params to submit here
-param2requests = {'reverse': [False, True]}
+param2requests = {
+    'reverse': [False, True],
+    'shuffle_docs': [False, True],
+}
 
 param2debug = {
-    'reverse': [False, True],
-    'num_iterations': [[1, 1]],
-    'num_evaluations': [4],
-    'context_size': [2],
+    'num_iterations': [1, 1],
+    'context_size': 2,
 }
 
 # default params
 param2default = {
     'reverse': False,
-    'shuffle_docs': False,   # TODO this is an important control (contents of parts are randomly chosen)
+    'shuffle_docs': False,   # this is an important control (contents of parts are randomly chosen)
     'corpus': 'childes-20180319',
+    'probes': 'sem-masters',
     'num_types': 4096,
     'num_iterations': [20, 20],  # [20, 20], [30, 10], [10, 30]
     'context_size': 7,  # default: 7 (equivalent to number of backprop-through-time steps)

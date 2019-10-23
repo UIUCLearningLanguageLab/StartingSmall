@@ -7,9 +7,10 @@ import torch
 
 from preppy.legacy import TrainPrep, TestPrep
 
+from categoryeval.probestore import ProbeStore
+
 from startingsmall import config
 from startingsmall.input import load_docs
-from startingsmall.evaluation import calc_pp
 from startingsmall.evaluation import update_metrics
 from startingsmall.rnn import RNN
 
@@ -19,6 +20,7 @@ class Params(object):
     reverse = attr.ib(validator=attr.validators.instance_of(bool))
     shuffle_docs = attr.ib(validator=attr.validators.instance_of(bool))
     corpus = attr.ib(validator=attr.validators.instance_of(str))
+    probes = attr.ib(validator=attr.validators.instance_of(str))
     num_types = attr.ib(validator=attr.validators.instance_of(int))
     num_iterations = attr.ib(validator=attr.validators.instance_of(list))
     context_size = attr.ib(validator=attr.validators.instance_of(int))
@@ -59,6 +61,9 @@ def main(param2val):
                          )
     windows_generator = train_prep.gen_windows()  # has to be created once
 
+    # probes for evaluation  # TODO allow for multiple probe stores
+    probe_store = ProbeStore(params.corpus, params.probes, train_prep.store.w2id)
+
     # model
     model = RNN(
         params.flavor,
@@ -77,44 +82,38 @@ def main(param2val):
 
     # initialize metrics for evaluation
     metrics = {
-        'ordered_ba': [],
-        'none_ba': [],
+        'train_pp': [],
+        'test_pp': [],
+        config.Metrics.ba_o: [],
+        config.Metrics.ba_n: [],
     }
-
-    test_pp = calc_pp(model, criterion, train_prep)
-    print(f'train-perplexity={test_pp}')
-    test_pp = calc_pp(model, criterion, test_prep)
-    print(f'test-perplexity={test_pp}')
 
     # train and eval
     train_mb = 0
     start_train = time.time()
     for timepoint, data_mb in enumerate(train_prep.eval_mbs):
         if timepoint == 0:
-            # eval
-            metrics = update_metrics(metrics, model, data_mb)  # metrics must be returned
+            # eval (metrics must be returned to reuse the same object)
+            metrics = update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store)
         else:
             # train + eval
-            if not config.Global.debug:
-                train_mb = train_on_corpus(model, optimizer, criterion, train_prep, data_mb, train_mb, windows_generator)
-            metrics = update_metrics(metrics, model, data_mb)
+            train_mb = train_on_corpus(model, optimizer, criterion, train_prep, data_mb, train_mb, windows_generator)
+            metrics = update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store)
 
+        # print progress to console
         minutes_elapsed = int(float(time.time() - start_train) / 60)
-        print(f'completed time-point={timepoint}/{config.Eval.num_evaluations}')
+        print(f'completed time-point={timepoint} of {config.Eval.num_evaluations}')
         print(f'minutes elapsed={minutes_elapsed}')
-        print(f'mini-batch={train_mb}')
         for k, v in metrics.items():
-            print(f'{k}={v[-1]:.2f}')
+            print(f'{k: <8}={v[-1]:.2f}')
         print()
 
     # to pandas
-    name = 'ordered_ba'
-    s1 = pd.Series(metrics[name], index=train_prep.eval_mbs)
-    s1.name = name
+    s1 = pd.Series(metrics[config.Metrics.ba_o], index=train_prep.eval_mbs)
+    s1.name = config.Metrics.ba_o
 
-    name = 'none_ba'
-    s2 = pd.Series(metrics[name], index=train_prep.eval_mbs)
-    s2.name = name
+    s2 = pd.Series(metrics[config.Metrics.ba_n], index=train_prep.eval_mbs)
+    s2.name = config.Metrics.ba_n
 
     return [s1, s2]
 
