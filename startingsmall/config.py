@@ -1,8 +1,16 @@
 from pathlib import Path
+import sys
+
+if sys.platform == 'darwin':
+    mnt_point = '/Volumes'
+elif 'linux' == sys.platform:
+    mnt_point = '/media'
+else:
+    raise SystemExit('Ludwig does not support this platform')
 
 
 class RemoteDirs:
-    root = Path('/media/research_data') / 'StartingSmall'
+    root = Path(mnt_point) / 'research_data' / 'StartingSmall'
     runs = root / 'runs'
     data = root / 'data'
 
@@ -10,7 +18,7 @@ class RemoteDirs:
 class LocalDirs:
     root = Path(__file__).parent.parent
     src = Path(__file__).parent
-    runs = root / '{}_runs'.format(src.name)
+    runs = root / 'runs'
 
 
 class Global:
@@ -25,7 +33,7 @@ class Eval:
     num_evaluations = 10
     context_types = ['ordered']  # none, ordered, shuffled, last
     category_structures = ['sem']  # sem, syn
-    cluster_metrics = ['ba']  # ba, f1, ck
+    cluster_metrics = ['ba']  # ba, f1, ck  # TODO use all these
 
 
 class Metrics:

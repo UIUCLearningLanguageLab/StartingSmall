@@ -16,7 +16,7 @@ param2default = {
     'reverse': False,
     'shuffle_docs': False,   # this is an important control (contents of parts are randomly chosen)
     'corpus': 'childes-20180319',
-    'probes': 'sem-masters',
+    'probes': 'sem-4096',
     'num_types': 4096,
     'num_iterations': [20, 20],  # [20, 20], [30, 10], [10, 30]
     'context_size': 7,  # default: 7 (equivalent to number of backprop-through-time steps)

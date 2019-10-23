@@ -106,7 +106,7 @@ def main(param2val):
         print(f'minutes elapsed={minutes_elapsed}')
         for k, v in metrics.items():
             print(f'{k: <12}={v[-1]:.2f}')
-        print()
+        print(flush=True)
 
     # to pandas
     s1 = pd.Series(metrics[config.Metrics.ba_o], index=train_prep.eval_mbs)

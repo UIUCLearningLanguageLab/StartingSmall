@@ -36,7 +36,7 @@ def calc_perplexity(model, criterion, prep):
     return pp.item()
 
 
-def update_metrics(metrics, model, criterion, train_prep, test_prep, ps):
+def update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store):
 
     # perplexity
     if config.Global.debug:
@@ -51,13 +51,14 @@ def update_metrics(metrics, model, criterion, train_prep, test_prep, ps):
     # TODO allow for multiple probe stores (evaluate against multiple category structures)
 
     # balanced accuracy
-    probe_reps_n = model.embed.weight.detach().cpu().numpy()[ps.vocab_ids]
+    probe_reps_n = model.embed.weight.detach().cpu().numpy()[probe_store.vocab_ids]
+    assert probe_reps_n.shape == (probe_store.num_probes, model.hidden_size)
     probe_sims_n = cosine_similarity(probe_reps_n)
 
     probe_sims_o = probe_sims_n  # TODO implement
 
-    metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, ps.gold_sims, 'ba'))
-    metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, ps.gold_sims, 'ba'))
+    metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
+    metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))
 
     return metrics
 

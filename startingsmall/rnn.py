@@ -9,6 +9,7 @@ class RNN(torch.nn.Module):
                  ):
 
         super().__init__()
+        self.hidden_size = hidden_size
 
         # define operations
         self.embed = torch.nn.Embedding(input_size, hidden_size)  # embed_size does not have to be hidden_size
