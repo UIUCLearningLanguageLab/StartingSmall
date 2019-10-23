@@ -105,7 +105,7 @@ def main(param2val):
         print(f'completed time-point={timepoint} of {config.Eval.num_evaluations}')
         print(f'minutes elapsed={minutes_elapsed}')
         for k, v in metrics.items():
-            print(f'{k: <8}={v[-1]:.2f}')
+            print(f'{k: <12}={v[-1]:.2f}')
         print()
 
     # to pandas
@@ -120,7 +120,7 @@ def main(param2val):
 
 def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, windows_generator):
     print('Training on items from mb {:,} to mb {:,}...'.format(train_mb, data_mb))
-    pbar = pyprind.ProgBar(data_mb - train_mb)
+    pbar = pyprind.ProgBar(data_mb - train_mb, stream=1)
     model.train()
     for windows in windows_generator:
 

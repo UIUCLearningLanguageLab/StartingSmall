@@ -1,7 +1,6 @@
 import pyprind
 import torch
 import numpy as np
-import sys
 from sklearn.metrics.pairwise import cosine_similarity
 
 from categoryeval.score import calc_score
@@ -15,7 +14,7 @@ def calc_perplexity(model, criterion, prep):
 
     pp_sum = torch.tensor(0.0, requires_grad=False)
     num_batches = 0
-    pbar = pyprind.ProgBar(prep.num_mbs_in_token_ids, stream=sys.stdout)
+    pbar = pyprind.ProgBar(prep.num_mbs_in_token_ids, stream=1)
 
     for windows in prep.gen_windows(iterate_once=True):
 
