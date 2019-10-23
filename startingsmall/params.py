@@ -1,27 +1,33 @@
 
 
 # specify params to submit here
-param2requests = {'part_order': ['inc_age', 'dec_age']}
+param2requests = {'reverse': [False, True]}
 
 param2debug = {
-    'part_order': ['inc_age', 'dec_age'],
+    'reverse': [False, True],
     'num_iterations': [[1, 1]],
-    'num_saves': [4],
-    'window_size': [3],
+    'num_evaluations': [4],
+    'context_size': [2],
 }
 
 # default params
 param2default = {
-    'num_parts': 2,  # default: 2, 4 is required to manifest part_order=midinc_age
-    'part_order': 'inc_age',  # 'shuffled_age', 'unordered_age', 'midinc_age', 'middec_age'
+    'reverse': False,
+    'shuffle_docs': False,   # TODO this is an important control (contents of parts are randomly chosen)
     'corpus': 'childes-20180319',
     'num_types': 4096,
     'num_iterations': [20, 20],  # [20, 20], [30, 10], [10, 30]
-    'window_size': 7,  # default: 7
-    'mb_size': 64,
+    'context_size': 7,  # default: 7 (equivalent to number of backprop-through-time steps)
+    'batch_size': 64,
     'flavor': 'rnn',  # rnn, lstm
     'hidden_size': 512,  # default: 512
     'lr': 0.01,
     'optimizer': 'adagrad',
     'wx_init': 'random'
 }
+
+# basic validation
+if 'num_iterations' in param2requests:
+    for v in param2requests:
+        assert isinstance(v, list)
+        assert len(v) == 2

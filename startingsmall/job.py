@@ -5,9 +5,10 @@ import pandas as pd
 import numpy as np
 import torch
 
-from windower import LegacyWindower
+from preppy.legacy import Prep
 
 from startingsmall import config
+from startingsmall.input import load_docs
 from startingsmall.evaluation import calc_pp
 from startingsmall.evaluation import update_metrics
 from startingsmall.rnn import RNN
@@ -15,13 +16,13 @@ from startingsmall.rnn import RNN
 
 @attr.s
 class Params(object):
-    num_parts = attr.ib(validator=attr.validators.instance_of(int))
-    part_order = attr.ib(validator=attr.validators.instance_of(str))
+    reverse = attr.ib(validator=attr.validators.instance_of(bool))
+    shuffle_docs = attr.ib(validator=attr.validators.instance_of(bool))
     corpus = attr.ib(validator=attr.validators.instance_of(str))
     num_types = attr.ib(validator=attr.validators.instance_of(int))
     num_iterations = attr.ib(validator=attr.validators.instance_of(list))
-    window_size = attr.ib(validator=attr.validators.instance_of(int))
-    mb_size = attr.ib(validator=attr.validators.instance_of(int))
+    context_size = attr.ib(validator=attr.validators.instance_of(int))
+    batch_size = attr.ib(validator=attr.validators.instance_of(int))
     flavor = attr.ib(validator=attr.validators.instance_of(str))
     hidden_size = attr.ib(validator=attr.validators.instance_of(int))
     lr = attr.ib(validator=attr.validators.instance_of(float))
@@ -41,27 +42,37 @@ def main(param2val):
     params = Params.from_param2val(param2val)
     print(params)
 
-    # load input as a list of strings (CHILDES transcripts or Wiki articles)
-    with (config.RemoteDirs.data / f'{params.corpus}.txt').open('r') as f:
-        docs = f.readlines()
+    train_docs, test_docs = load_docs(params)
 
-    # prepare input for training
-    windower = LegacyWindower(docs,
-                              params.num_parts,
-                              params.part_order,
-                              params.num_types,
-                              params.num_iterations,
-                              params.window_size,
-                              config.Eval.num_saves
-                              )
-    train_mb_generator = windower.gen_ids()  # has to be created once
+    # prepare input
+    train_prep = Prep(train_docs,
+                      params.reverse,
+                      params.num_types,
+                      params.num_iterations,
+                      params.batch_size,
+                      params.context_size,
+                      config.Eval.num_evaluations,
+                      vocab=None,
+                      )
+    test_prep = Prep(test_docs,
+                     params.reverse,
+                     params.num_types,
+                     params.num_iterations,
+                     params.batch_size,
+                     params.context_size,
+                     config.Eval.num_evaluations,
+                     vocab=train_prep.store.types
+                     )
+    windows_generator = train_prep.gen_windows()  # has to be created once
 
+    # model
     model = RNN(
         params.flavor,
         params.hidden_size,
         params.wx_init,
     )
 
+    # loss function
     criterion = torch.nn.CrossEntropyLoss()
     if params.optimizer == 'adagrad':
         optimizer = torch.optim.Adagrad(model.parameters(), lr=params.lr)
@@ -70,60 +81,61 @@ def main(param2val):
     else:
         raise AttributeError('Invalid arg to "optimizer"')
 
+    # initialize metrics for evaluation
     metrics = {
         'ordered_ba': [],
         'none_ba': [],
     }
 
-    test_pp = calc_pp(model, is_test=True)
+    test_pp = calc_pp(model, criterion, test_prep)
     print(f'test-perplexity={test_pp}')
 
     # train and eval
     train_mb = 0
     start_train = time.time()
-    for timepoint, data_mb in enumerate(hub.data_mbs):
+    for timepoint, data_mb in enumerate(train_prep.eval_mbs):
         if timepoint == 0:
             # eval
             metrics = update_metrics(metrics, model, data_mb)  # metrics must be returned
         else:
             # train + eval
             if not config.Global.debug:
-                train_mb = train_on_corpus(model, optimizer, criterion, data_mb, train_mb, train_mb_generator)
+                train_mb = train_on_corpus(model, optimizer, criterion, train_prep, data_mb, train_mb, windows_generator)
             metrics = update_metrics(metrics, model, data_mb)
 
         minutes_elapsed = int(float(time.time() - start_train) / 60)
-        print(f'completed time-point: {timepoint}/{config.Eval.num_saves}')
-        print(f'minutes elapsed: {minutes_elapsed}')
-        print(f'mini-batch: {train_mb}')
+        print(f'completed time-point={timepoint}/{config.Eval.num_evaluations}')
+        print(f'minutes elapsed={minutes_elapsed}')
+        print(f'mini-batch={train_mb}')
+        for k, v in metrics.items():
+            print(f'{k}={v:.2f}')
         print()
 
     # to pandas
     name = 'ordered_ba'
-    s1 = pd.Series(metrics[name], index=np.arange(hub.data_mbs))
+    s1 = pd.Series(metrics[name], index=np.arange(train_prep.eval_mbs))
     s1.name = name
 
     name = 'none_ba'
-    s2 = pd.Series(metrics[name], index=np.arange(hub.data_mbs))
+    s2 = pd.Series(metrics[name], index=np.arange(train_prep.eval_mbs))
     s2.name = name
 
     return [s1, s2]
 
 
-def train_on_corpus(model, optimizer, criterion, data_mb, train_mb, train_mb_generator):
+def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, windows_generator):
     print('Training on items from mb {:,} to mb {:,}...'.format(train_mb, data_mb))
     pbar = pyprind.ProgBar(data_mb - train_mb)
     model.train()
-    for x, y in train_mb_generator:
+    for windows in windows_generator:
 
-        model.batch_size = len(windows)  # dynamic batch size
-        x = windows[:, :-1]
-        y = windows[:, -1]
+        x, y = np.split(windows, [prep.context_size], axis=1)
+        inputs = torch.cuda.IntTensor(x)
+        targets = torch.cuda.IntTensor(y)
 
         # forward step
-        inputs = torch.LongTensor(x.T)  # requires [window_size, mb_size]
-        targets = torch.LongTensor(y)
-        hidden = model.init_hidden()  # must happen, because batch size changes from seq to seq
-        logits = model(inputs, hidden)
+        model.batch_size = len(windows)  # dynamic batch size
+        logits = model(inputs)  # initial hidden state defaults to zero if not provided
 
         # backward step
         optimizer.zero_grad()  # sets all gradients to zero

@@ -17,8 +17,12 @@ class Global:
     debug = False
 
 
+class Symbols:
+    OOV = 'OOV'
+
+
 class Eval:
-    num_saves = 10
+    num_evaluations = 10
     context_types = ['ordered']  # none, ordered, shuffled, last
     category_structures = ['sem']  # sem, syn
     cluster_metrics = ['ba']  # ba, f1, ck

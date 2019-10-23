@@ -1,16 +1,40 @@
 import pyprind
+import torch
+import numpy as np
 
 
-def calc_pp(model, is_test):
-    print('Calculating {} perplexity...'.format('test' if is_test else 'train'))
+def calc_pp(model, criterion, prep):
+    print(f'Calculating perplexity...')
+    model.eval()
+
     pp_sum, num_batches, pp = 0, 0, 0
-    pbar = pyprind.ProgBar(hub.num_mbs_in_token_ids)
-    num_iterations_list = [1] * hub.params.num_parts
-    for (x, y) in hub.gen_ids(num_iterations_list, is_test=is_test):
+    pbar = pyprind.ProgBar(prep.num_mbs_in_token_ids)
+
+    for windows in prep.gen_windows(iterate_once=True):
+
+        # to tensor
+        x, y = np.split(windows, [prep.context_size], axis=1)
+        inputs = torch.cuda.IntTensor(x)
+        targets = torch.cuda.IntTensor(y)
+
+        # forward step
+        model.batch_size = len(windows)  # dynamic batch size
+        logits = model(inputs)  # initial hidden state defaults to zero if not provided
+
+        # calc pp
+        loss = criterion(logits, targets)
+
+        pp_batch = 2 ** loss  # TODO is base 2 correct?
+
         pbar.update()
-        pp_batch = sess.run(graph.batch_pp, feed_dict={graph.x: x, graph.y: y})
+
         pp_sum += pp_batch
         num_batches += 1
     pp = pp_sum / num_batches
-    print('pp={}'.format(pp))
     return pp
+
+
+def get_weights(model):
+
+    w_ih = model.rnn.weight_ih_l  # [hidden_size, input_size]
+    w_hh = model.rnn.weight_hh_l  # [hidden_size, hidden_size]
