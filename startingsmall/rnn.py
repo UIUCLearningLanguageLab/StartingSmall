@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 class RNN(torch.nn.Module):
@@ -29,6 +30,10 @@ class RNN(torch.nn.Module):
         self.project = torch.nn.Linear(in_features=hidden_size,
                                        out_features=input_size)
 
+        # init weights
+        max_w = np.sqrt(1 / hidden_size)
+        self.embed.weight.data.uniform_(-max_w, max_w)
+        self.project.weight.data.uniform_(-max_w, max_w)
         self.project.bias.data.fill_(0.0)
 
         self.cuda()
@@ -43,4 +48,5 @@ class RNN(torch.nn.Module):
         encoded, _ = self.encode(embedded)  # returns all time steps [batch_size, context_size, hidden_size]
         last_encodings = torch.squeeze(encoded[:, -1])  # [batch_size, hidden_size]
         logits = self.project(last_encodings)  # [batch_size, input_size]
-        return logits
+
+        return {'last_encodings': last_encodings, 'logits': logits}

@@ -5,6 +5,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from categoryeval.score import calc_score
 
+from preppy.legacy import make_windows_mat
+
 from startingsmall import config
 
 
@@ -24,7 +26,7 @@ def calc_perplexity(model, criterion, prep):
         targets = torch.cuda.LongTensor(np.squeeze(y))
 
         # calc pp (using torch only, on GPU)
-        logits = model(inputs)  # initial hidden state defaults to zero if not provided
+        logits = model(inputs)['logits']  # initial hidden state defaults to zero if not provided
         loss_batch = criterion(logits, targets).detach()  # detach to prevent saving complete graph for every sample
         pp_batch = torch.exp(loss_batch)  # need base e
 
@@ -36,9 +38,7 @@ def calc_perplexity(model, criterion, prep):
     return pp.item()
 
 
-def update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store):
-
-    # perplexity
+def update_pp_metrics(metrics, model, criterion, train_prep, test_prep):
     if config.Global.debug:
         train_pp = np.nan
         test_pp = calc_perplexity(model, criterion, test_prep)
@@ -47,15 +47,34 @@ def update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store
         test_pp = calc_perplexity(model, criterion, test_prep)
     metrics['train_pp'].append(train_pp)
     metrics['test_pp'].append(test_pp)
+    return metrics
+
+
+def update_ba_metrics(metrics, model, train_prep, probe_store):
 
     # TODO allow for multiple probe stores (evaluate against multiple category structures)
 
-    # balanced accuracy
-    probe_reps_n = model.embed.weight.detach().cpu().numpy()[probe_store.vocab_ids]
-    assert probe_reps_n.shape == (probe_store.num_probes, model.hidden_size)
-    probe_sims_n = cosine_similarity(probe_reps_n)
+    # representations without context
+    vocab_reps = model.embed.weight.detach().cpu().numpy()
+    probe_reps_n = vocab_reps[probe_store.vocab_ids]
 
-    probe_sims_o = probe_sims_n  # TODO implement
+    # representations with context
+    all_windows = make_windows_mat(train_prep.store.token_ids,
+                                   num_windows=train_prep.num_windows_in_part * 2,
+                                   num_tokens_in_window=train_prep.num_tokens_in_window)
+    probe_reps_o = np.zeros((probe_store.num_probes, model.hidden_size))
+    for n, vocab_id in enumerate(probe_store.vocab_ids):
+        bool_idx = np.isin(all_windows[:, -2], vocab_id)
+        x = all_windows[bool_idx][:, :-1]
+        inputs = torch.cuda.LongTensor(x)
+        num_exemplars, dim1 = inputs.shape
+        assert dim1 == train_prep.context_size
+        print(f'Made {num_exemplars:>6} representations for {train_prep.store.types[vocab_id]:<12}')
+        probe_exemplar_reps = model(inputs)['last_encodings'].detach().cpu().numpy()   # [num exemplars, hidden_size]
+        probe_reps_o[n] = probe_exemplar_reps.mean(axis=0)
+
+    probe_sims_o = cosine_similarity(probe_reps_o)
+    probe_sims_n = cosine_similarity(probe_reps_n)
 
     metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
     metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))

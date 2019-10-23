@@ -11,7 +11,7 @@ from categoryeval.probestore import ProbeStore
 
 from startingsmall import config
 from startingsmall.input import load_docs
-from startingsmall.evaluation import update_metrics
+from startingsmall.evaluation import update_ba_metrics, update_pp_metrics
 from startingsmall.rnn import RNN
 
 
@@ -92,13 +92,14 @@ def main(param2val):
     train_mb = 0
     start_train = time.time()
     for timepoint, data_mb in enumerate(train_prep.eval_mbs):
-        if timepoint == 0:
-            # eval (metrics must be returned to reuse the same object)
-            metrics = update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store)
-        else:
-            # train + eval
+
+        # train
+        if timepoint != 0:
             train_mb = train_on_corpus(model, optimizer, criterion, train_prep, data_mb, train_mb, windows_generator)
-            metrics = update_metrics(metrics, model, criterion, train_prep, test_prep, probe_store)
+
+        # eval (metrics must be returned to reuse the same object)
+        metrics = update_pp_metrics(metrics, model, criterion, train_prep, test_prep)
+        metrics = update_ba_metrics(metrics, model, train_prep, probe_store)
 
         # print progress to console
         minutes_elapsed = int(float(time.time() - start_train) / 60)
@@ -130,7 +131,7 @@ def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, window
 
         # forward step
         model.batch_size = len(windows)  # dynamic batch size
-        logits = model(inputs)  # initial hidden state defaults to zero if not provided
+        logits = model(inputs)['logits']  # initial hidden state defaults to zero if not provided
 
         # backward step
         optimizer.zero_grad()  # sets all gradients to zero
