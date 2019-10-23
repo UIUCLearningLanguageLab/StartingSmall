@@ -27,11 +27,10 @@ class Params(object):
     hidden_size = attr.ib(validator=attr.validators.instance_of(int))
     lr = attr.ib(validator=attr.validators.instance_of(float))
     optimizer = attr.ib(validator=attr.validators.instance_of(str))
-    wx_init = attr.ib(validator=attr.validators.instance_of(str))
 
     @classmethod
     def from_param2val(cls, param2val):
-        kwargs = {k: v for k, v in param2val
+        kwargs = {k: v for k, v in param2val.items()
                   if k not in ['job_name', 'param_name']}
         return cls(**kwargs)
 
@@ -68,8 +67,8 @@ def main(param2val):
     # model
     model = RNN(
         params.flavor,
+        params.num_types,
         params.hidden_size,
-        params.wx_init,
     )
 
     # loss function
@@ -87,6 +86,8 @@ def main(param2val):
         'none_ba': [],
     }
 
+    test_pp = calc_pp(model, criterion, train_prep)
+    print(f'train-perplexity={test_pp}')
     test_pp = calc_pp(model, criterion, test_prep)
     print(f'test-perplexity={test_pp}')
 
@@ -113,11 +114,11 @@ def main(param2val):
 
     # to pandas
     name = 'ordered_ba'
-    s1 = pd.Series(metrics[name], index=np.arange(train_prep.eval_mbs))
+    s1 = pd.Series(metrics[name], index=train_prep.eval_mbs)
     s1.name = name
 
     name = 'none_ba'
-    s2 = pd.Series(metrics[name], index=np.arange(train_prep.eval_mbs))
+    s2 = pd.Series(metrics[name], index=train_prep.eval_mbs)
     s2.name = name
 
     return [s1, s2]
@@ -130,8 +131,8 @@ def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, window
     for windows in windows_generator:
 
         x, y = np.split(windows, [prep.context_size], axis=1)
-        inputs = torch.cuda.IntTensor(x)
-        targets = torch.cuda.IntTensor(y)
+        inputs = torch.cuda.LongTensor(x)
+        targets = torch.cuda.LongTensor(y)
 
         # forward step
         model.batch_size = len(windows)  # dynamic batch size

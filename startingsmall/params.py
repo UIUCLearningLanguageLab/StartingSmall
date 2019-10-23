@@ -19,11 +19,10 @@ param2default = {
     'num_iterations': [20, 20],  # [20, 20], [30, 10], [10, 30]
     'context_size': 7,  # default: 7 (equivalent to number of backprop-through-time steps)
     'batch_size': 64,
-    'flavor': 'rnn',  # rnn, lstm
+    'flavor': 'srn',  # srn, lstm
     'hidden_size': 512,  # default: 512
     'lr': 0.01,
     'optimizer': 'adagrad',
-    'wx_init': 'random'
 }
 
 # basic validation

@@ -5,3 +5,4 @@ pyprind
 torch
 numpy
 attrs
+https://github.com/phueb/Ludwig/archive/v1.2.2.tar.gz

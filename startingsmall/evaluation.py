@@ -14,8 +14,8 @@ def calc_pp(model, criterion, prep):
 
         # to tensor
         x, y = np.split(windows, [prep.context_size], axis=1)
-        inputs = torch.cuda.IntTensor(x)
-        targets = torch.cuda.IntTensor(y)
+        inputs = torch.cuda.LongTensor(x)
+        targets = torch.cuda.LongTensor(y)
 
         # forward step
         model.batch_size = len(windows)  # dynamic batch size
@@ -32,6 +32,13 @@ def calc_pp(model, criterion, prep):
         num_batches += 1
     pp = pp_sum / num_batches
     return pp
+
+
+def update_metrics(metrics, model, data_mb):  # TODO implement
+
+    print('WARNING: update_metrics is not implemented')
+
+    return metrics
 
 
 def get_weights(model):

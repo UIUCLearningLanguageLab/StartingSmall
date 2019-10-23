@@ -23,6 +23,18 @@ The Wikipedia text file was created using [CreateWikiCorpus]() to extract raw te
 
 TODO - describe process of creating Wiki text
 
+## Dependencies
+
+The text files are prepared for training using a custom Python package `Preppy`.
+It is available [here](https://github.com/phueb/Preppy).
+It performs no reordering of the input, and assumes instead that the lines in the text file are already in the order that they should be presented to the model.
+Install the dependency by executing:
+
+```bash
+pip install git+https://github.com/phueb/Preppy.git
+```
+
+
 ## Usage
 
 The code is designed to run on multiple machines, at the UIUC Learning & Language Lab using a custom job submission system called [Ludwig](https://github.com/phueb/Ludwig).
