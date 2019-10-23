@@ -54,11 +54,31 @@ def update_ba_metrics(metrics, model, train_prep, probe_store):
 
     # TODO allow for multiple probe stores (evaluate against multiple category structures)
 
-    # representations without context
+    probe_reps_n = make_probe_reps_n(model, probe_store)
+    probe_reps_o = make_probe_reps_o(model, probe_store, train_prep)
+
+    probe_sims_o = cosine_similarity(probe_reps_o)
+    probe_sims_n = cosine_similarity(probe_reps_n)
+
+    metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
+    metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))
+
+    return metrics
+
+
+def make_probe_reps_n(model, probe_store):
+    """
+    make probe representations without context by retrieving embeddings
+    """
     vocab_reps = model.embed.weight.detach().cpu().numpy()
     probe_reps_n = vocab_reps[probe_store.vocab_ids]
+    return probe_reps_n
 
-    # representations with context
+
+def make_probe_reps_o(model, probe_store, train_prep):
+    """
+    make probe representations by averaging over all contextualized representations
+    """
     all_windows = make_windows_mat(train_prep.store.token_ids,
                                    num_windows=train_prep.num_windows_in_part * 2,
                                    num_tokens_in_window=train_prep.num_tokens_in_window)
@@ -70,16 +90,9 @@ def update_ba_metrics(metrics, model, train_prep, probe_store):
         num_exemplars, dim1 = inputs.shape
         assert dim1 == train_prep.context_size
         print(f'Made {num_exemplars:>6} representations for {train_prep.store.types[vocab_id]:<12}')
-        probe_exemplar_reps = model(inputs)['last_encodings'].detach().cpu().numpy()   # [num exemplars, hidden_size]
+        probe_exemplar_reps = model(inputs)['last_encodings'].detach().cpu().numpy()  # [num exemplars, hidden_size]
         probe_reps_o[n] = probe_exemplar_reps.mean(axis=0)
-
-    probe_sims_o = cosine_similarity(probe_reps_o)
-    probe_sims_n = cosine_similarity(probe_reps_n)
-
-    metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
-    metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))
-
-    return metrics
+    return probe_reps_o
 
 
 def get_weights(model):
