@@ -38,8 +38,14 @@ pip install git+https://github.com/phueb/Preppy.git
 ## Usage
 
 The code is designed to run on multiple machines, at the UIUC Learning & Language Lab using a custom job submission system called [Ludwig](https://github.com/phueb/Ludwig).
+If you have `Ludwig` installed and access to the lab's file server, you can submit jobs by executing:
+
+```bash
+ludwig -c <PATH_TO_PREPPY>
+```
 
 Alternatively, the text files may be obtained from here.
+If you don't have access to the server, then make sure to edit the path to the folder in which the text file is located by modifying `config.RemoteDirs.data`
 To run the default configuration, call `starting_small.job.main` like so:
 
 ```python

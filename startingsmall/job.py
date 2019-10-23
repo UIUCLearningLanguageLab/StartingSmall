@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-from preppy.legacy import Prep
+from preppy.legacy import TrainPrep, TestPrep
 
 from startingsmall import config
 from startingsmall.input import load_docs
@@ -44,24 +44,19 @@ def main(param2val):
     train_docs, test_docs = load_docs(params)
 
     # prepare input
-    train_prep = Prep(train_docs,
-                      params.reverse,
-                      params.num_types,
-                      params.num_iterations,
-                      params.batch_size,
-                      params.context_size,
-                      config.Eval.num_evaluations,
-                      vocab=None,
-                      )
-    test_prep = Prep(test_docs,
-                     params.reverse,
-                     params.num_types,
-                     params.num_iterations,
-                     params.batch_size,
-                     params.context_size,
-                     config.Eval.num_evaluations,
-                     vocab=train_prep.store.types
-                     )
+    train_prep = TrainPrep(train_docs,
+                           params.reverse,
+                           params.num_types,
+                           params.num_iterations,
+                           params.batch_size,
+                           params.context_size,
+                           config.Eval.num_evaluations,
+                           )
+    test_prep = TestPrep(test_docs,
+                         params.batch_size,
+                         params.context_size,
+                         train_prep.store.types
+                         )
     windows_generator = train_prep.gen_windows()  # has to be created once
 
     # model
@@ -109,7 +104,7 @@ def main(param2val):
         print(f'minutes elapsed={minutes_elapsed}')
         print(f'mini-batch={train_mb}')
         for k, v in metrics.items():
-            print(f'{k}={v:.2f}')
+            print(f'{k}={v[-1]:.2f}')
         print()
 
     # to pandas
@@ -132,7 +127,7 @@ def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, window
 
         x, y = np.split(windows, [prep.context_size], axis=1)
         inputs = torch.cuda.LongTensor(x)
-        targets = torch.cuda.LongTensor(y)
+        targets = torch.cuda.LongTensor(np.squeeze(y))
 
         # forward step
         model.batch_size = len(windows)  # dynamic batch size

@@ -9,7 +9,6 @@ class RNN(torch.nn.Module):
                  ):
 
         super().__init__()
-        self.batch_size = None  # is set dynamically
 
         # define operations
         self.embed = torch.nn.Embedding(input_size, hidden_size)  # embed_size does not have to be hidden_size
@@ -39,8 +38,8 @@ class RNN(torch.nn.Module):
                 inputs: torch.cuda.LongTensor
                 ) -> torch.cuda.LongTensor:
 
-        embeds = self.embed(inputs)
-        outputs, hidden = self.encode(embeds)  # this returns all time steps
-        final_outputs = torch.squeeze(outputs[-1])
-        logits = self.project(final_outputs)
+        embedded = self.embed(inputs)
+        encoded, _ = self.encode(embedded)  # returns all time steps [batch_size, context_size, hidden_size]
+        last_encodings = torch.squeeze(encoded[:, -1])  # [batch_size, hidden_size]
+        logits = self.project(last_encodings)  # [batch_size, input_size]
         return logits
