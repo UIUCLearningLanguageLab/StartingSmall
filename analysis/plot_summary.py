@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from typing import Union, List, Tuple
+from pathlib import Path
 
 from ludwig.client import Client
 
@@ -8,7 +9,7 @@ from startingsmall import config
 from startingsmall.figs import make_summary_fig
 from startingsmall.params import param2default, param2requests
 
-RUNS_PATH: Union[None, str] = None  # use Ludwig if NOne, else specify path to runs folder (e.g. 'runs')
+RUNS_PATH: Union[None, Path] = config.LocalDirs.runs  # set to None if using Ludwig
 FILE_NAME: str = 'ba_ordered.csv'  # contains trajectory of balanced accuracy
 
 # figure
@@ -87,4 +88,3 @@ fig = make_summary_fig(summaries,
                        plot_max_line=PLOT_MAX_LINE,
                        )
 fig.show()
-
