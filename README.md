@@ -49,7 +49,7 @@ It is available [here](https://github.com/phueb/CategoryEval).
 It computes how well the model's learned representations recapitulate some human-created gold category structure.
 By default, it returns the balanced accuracy, but F1 and Cohen's Kappa can be computed also.
 
-### Ludwig 1.2.1 (Optional)
+### Ludwig 1.3.0
 
 If you are a member of the UIUC Learning & Language lab, you can run the jobs in parallel on multiple machines.
 This is recommended if multiple replications need to be run, or if no access to GPUs is otherwise available.
