@@ -52,8 +52,6 @@ def update_pp_metrics(metrics, model, criterion, train_prep, test_prep):
 
 def update_ba_metrics(metrics, model, train_prep, probe_store):
 
-    # TODO allow for multiple probe stores (evaluate against multiple category structures)
-
     probe_reps_n = make_probe_reps_n(model, probe_store)
     probe_reps_o = make_probe_reps_o(model, probe_store, train_prep)
 

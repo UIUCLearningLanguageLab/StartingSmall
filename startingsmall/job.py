@@ -61,7 +61,7 @@ def main(param2val):
                          )
     windows_generator = train_prep.gen_windows()  # has to be created once
 
-    # probes for evaluation  # TODO allow for multiple probe stores
+    # probes for evaluation
     probe_store = ProbeStore(params.corpus, params.probes, train_prep.store.w2id)
 
     # model
@@ -116,7 +116,13 @@ def main(param2val):
     s2 = pd.Series(metrics[config.Metrics.ba_n], index=train_prep.eval_mbs)
     s2.name = config.Metrics.ba_n
 
-    return [s1, s2]
+    s3 = pd.Series(metrics['train_pp'], index=train_prep.eval_mbs)
+    s3.name = 'train_pp'
+
+    s4 = pd.Series(metrics['test_pp'], index=train_prep.eval_mbs)
+    s4.name = 'test_pp'
+
+    return [s1, s2, s3, s4]
 
 
 def train_on_corpus(model, optimizer, criterion, prep, data_mb, train_mb, windows_generator):
