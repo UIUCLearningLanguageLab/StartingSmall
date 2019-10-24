@@ -7,7 +7,7 @@ def load_docs(params, num_test_docs=100, seed=3):
     """
     100 test docs + random seed = 3 were used in PH master's thesis
     """
-    # load input as a list of strings (CHILDES transcripts or Wiki articles)
+    # load CHILDES transcripts as list of strings
     with (config.RemoteDirs.data / f'{params.corpus}.txt').open('r') as f:
         docs = f.readlines()
     num_docs = len(docs)
