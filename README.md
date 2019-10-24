@@ -56,6 +56,8 @@ This is recommended if multiple replications need to be run, or if no access to 
 
 ## Usage
 
+### Training
+
 The code is designed to run on multiple machines, at the UIUC Learning & Language Lab using a custom job submission system called [Ludwig](https://github.com/phueb/Ludwig).
 If you have access to the lab's file server, you can submit jobs with `Ludwig`:
 
@@ -68,6 +70,16 @@ Alternatively, the experiment can be run locally:
 ```bash
 ludwig-local
 ```
+
+### Plot results
+
+To plot a summary of the results:
+
+```bash
+python3 analysis/plot_summary.py
+```
+
+![Age-Order Effect](age-order-effect.png)
 
 ## History
 
