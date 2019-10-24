@@ -6,3 +6,5 @@ torch
 numpy
 attrs
 https://github.com/phueb/Ludwig/archive/v1.2.2.tar.gz
+https://github.com/phueb/Preppy/archive/v1.0.0.tar.gz
+https://github.com/phueb/CategoryEval/archive/v1.0.0.tar.gz
