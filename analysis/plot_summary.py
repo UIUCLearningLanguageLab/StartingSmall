@@ -15,13 +15,13 @@ FILE_NAME: str = 'ba_ordered.csv'  # contains trajectory of balanced accuracy
 # figure
 LABEL_N: bool = False
 PLOT_MAX_LINES: bool = False  # plot horizontal line at best overall performance
-PLOT_MAX_LINE: bool = True    # plot horizontal line at best performance for each param
-PALETTE_IDS: Union[List[int], None] = None  # re-assign colors to each line
+PLOT_MAX_LINE: bool = False    # plot horizontal line at best performance for each param
+PALETTE_IDS: Union[List[int], None] = [1, 0]  # re-assign colors to each line
 V_LINES: Union[List[int], None] = [0, 1]  # add vertical lines to highlight time slices
 TITLE: str = 'Age-ordered vs. Age-reversed Training'  # figure title
-ALTERNATIVE_LABELS: Union[List[str], None] = None  # custom labels for figure legend
+ALTERNATIVE_LABELS: Union[List[str], None] = ['age-ordered', 'reverse age-ordered']  # custom labels for figure legend
 FIG_SIZE: Tuple[int, int] = (8, 6)  # in inches
-Y_LIMS: List[float] = [0.5, 0.8]
+Y_LIMS: List[float] = [0.5, 0.75]
 Y_LABEL: str = 'Balanced Accuracy'
 
 
@@ -54,6 +54,7 @@ def make_summary(param_path, label):
 
 # collect summaries
 summaries = []
+param2requests['shuffle_docs'] = [False]  # do not show results for shuffled_docs=True
 client = Client(config.RemoteDirs.root.name, param2default)
 for p, label in client.gen_param_ps(param2requests, runs_path=RUNS_PATH, label_n=LABEL_N):
 
@@ -88,3 +89,4 @@ fig = make_summary_fig(summaries,
                        plot_max_line=PLOT_MAX_LINE,
                        )
 fig.show()
+
