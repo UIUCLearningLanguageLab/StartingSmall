@@ -7,21 +7,30 @@ To that end, most of the complexity of the original project have been stripped.
 
 ## Motivation & Results
 
-Theoretical motivation and detailed analyses of the results can be found in my master's thesis, submitted in August 2018.
+Theoretical motivation and detailed analyses of the results can be found in my master's thesis, submitted in August 2019.
 The thesis will become available on my [personal website](http://philhhuebner.com) in early 2020.
 
 ## Training Data
 
-The text files used as input to the RNN have undergone a number of processing steps.
-The CHILDES text file was created using [CHILDESHub](https://github.com/phueb/CHILDESHub), which performs:
+The training input consists of transcribed child-directed speech from the CHILDES database.
+The text used to train the RNN in my thesis is available in `data/childes-20180319.txt`. 
+It was created using [CHILDESHub](https://github.com/phueb/CHILDESHub), which performs:
 
 1) tokenization using the default tokenizer in `spacy`
 2) lowercasing
 3) ordering of transcripts by the age of the target child
 
+## Installation
+
+First, create a new virtual environment for Python 3.6. Then:
+
+```
+pip install git+https://github.com/UIUCLearningLanguageLab/StartingSmall
+```
+
 ## Dependencies
 
-To install all the dependencies, execute the following in a virtual environment: 
+To install all the dependencies, execute the following in your virtual environment: 
 
 ```bash
 pip install -r requirements.txt
@@ -51,18 +60,13 @@ The code is designed to run on multiple machines, at the UIUC Learning & Languag
 If you have access to the lab's file server, you can submit jobs with `Ludwig`:
 
 ```bash
-ludwig -c PATH_TO_PREPPY PATH_TO_CATEGORYEVAL
+ludwig -c PATH-TO-PREPPY PATH-TO-CATEGORYEVAL
 ```
 
-Alternatively, the corpus file has been included for users without access to the server.
-Make sure to edit the path to the folder in which the text file is located by modifying `config.RemoteDirs.data`
-To run the default configuration, call `starting_small.job.main` like so:
+Alternatively, the experiment can be run locally:
 
-```python
-from startingsmall.job import main
-from startingsmall.params import param2default
-
-main(param2default)  # runs the experiment in default configuration
+```bash
+ludwig-local
 ```
 
 ## History
@@ -77,6 +81,7 @@ The following changes resulted due to the porting:
 * the custom RNN architecture was replaced by a more standard architecture. 
 Specifically, prior to October 2019, embeddings were directly added to the hidden layer.
 In the standard RNN architecture, embeddings undergo an additional transformation step before being added to the hidden layer.
+However, the key finding, that age-ordered training improves semantic category learning, replicated in this new architecture.
 
 ## Compatibility
 
