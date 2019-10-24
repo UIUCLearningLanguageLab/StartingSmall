@@ -31,9 +31,6 @@ class Symbols:
 
 class Eval:
     num_evaluations = 10
-    context_types = ['ordered']  # none, ordered, shuffled, last
-    category_structures = ['sem']  # sem, syn
-    cluster_metrics = ['ba']  # ba, f1, ck  # TODO use all these
 
 
 class Metrics:
