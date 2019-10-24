@@ -77,12 +77,7 @@ The following changes resulted due to the porting:
 * the custom RNN architecture was replaced by a more standard architecture. 
 Specifically, prior to October 2019, embeddings were directly added to the hidden layer.
 In the standard RNN architecture, embeddings undergo an additional transformation step before being added to the hidden layer.
-* RNN weights are initialized with a uniform distribution, rather than a truncated normal distribution. 
-The range of the uniform distribution, is equivalent to the standard deviation of the truncated normal distribution (sqrt(1/hidden_size))
-* the train/test split was removed; all data is included during training
- 
 
 ## Compatibility
 
-This repository is under active development. 
-Tested on Python 3.6.
+Developed on Ubuntu 16.04 with Python 3.6

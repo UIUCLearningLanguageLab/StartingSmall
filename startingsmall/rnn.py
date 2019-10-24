@@ -30,7 +30,7 @@ class RNN(torch.nn.Module):
         self.project = torch.nn.Linear(in_features=hidden_size,
                                        out_features=input_size)
 
-        # init weights
+        # init weights - this is required to get good balanced accuracy
         max_w = np.sqrt(1 / hidden_size)
         self.embed.weight.data.uniform_(-max_w, max_w)
         self.project.weight.data.uniform_(-max_w, max_w)
