@@ -7,14 +7,14 @@ To that end, most of the complexity of the original project have been stripped.
 
 ## Motivation & Results
 
-Theoretical motivation and detailed analyses of the results can be found in my master's thesis, submitted in August 2019.
-The thesis will become available on my [personal website](http://philhhuebner.com) in early 2020.
+Theoretical motivation and detailed analyses of the results can be found in Philip Huebner's master's thesis, submitted in August 2019.
+The thesis will become available on his [personal website](http://philhhuebner.com) in early 2020.
 
 ## Training Data
 
 The training input consists of transcribed child-directed speech from the CHILDES database.
 The text used to train the RNN in my thesis is available in `data/childes-20180319.txt`. 
-It was created using [CHILDESHub](https://github.com/phueb/CHILDESHub), which performs:
+It was created using [CreateCHILDESCorpus](https://github.com/UIUCLearningLanguageLab/CreateCHILDESCorpus), which performs:
 
 1) tokenization using the default tokenizer in `spacy`
 2) lowercasing
