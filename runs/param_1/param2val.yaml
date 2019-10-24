@@ -1,0 +1,16 @@
+batch_size: 64
+context_size: 7
+corpus: childes-20180319
+flavor: srn
+hidden_size: 512
+job_name: null
+lr: 0.01
+num_iterations:
+- 20
+- 20
+num_types: 4096
+optimizer: adagrad
+param_name: param_1
+probes: sem-4096
+reverse: false
+shuffle_docs: false
