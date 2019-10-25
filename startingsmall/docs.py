@@ -1,5 +1,5 @@
 import random
-from typing import List, Union
+from typing import List,Tuple, Optional
 
 from startingsmall import config
 
@@ -8,10 +8,11 @@ childes_mid_doc_ids = tuple(range(1500, 1600))
 
 
 def load_docs(params,
-              test_doc_ids: Union[List[int], None] = childes_mid_doc_ids,
-              num_test_docs=100,
-              shuffle_seed=20,
-              split_seed=3):
+              test_doc_ids: Optional[List[int]] = childes_mid_doc_ids,
+              num_test_docs: Optional[int] = 100,
+              shuffle_seed: Optional[int] = 20,
+              split_seed: Optional[int] = 3
+              ) -> Tuple[List[str], List[str]]:
     """
     100 test docs + random seed = 3 were used in PH master's thesis
     """
