@@ -7,22 +7,24 @@ from startingsmall import config
 childes_mid_doc_ids = tuple(range(1500, 1600))
 
 
-def load_docs(params,
+def load_docs(corpus_name: str,
+              shuffle_docs: bool,
               test_doc_ids: Optional[List[int]] = childes_mid_doc_ids,
               num_test_docs: Optional[int] = 100,
               shuffle_seed: Optional[int] = 20,
               split_seed: Optional[int] = 3
               ) -> Tuple[List[str], List[str]]:
     """
-    100 test docs + random seed = 3 were used in PH master's thesis
+    100 test docs and split_seed = 3 were used in PH master's thesis
     """
+
     # load CHILDES transcripts as list of strings
-    with (config.RemoteDirs.data / f'{params.corpus}.txt').open('r') as f:
+    with (config.RemoteDirs.data / f'{corpus_name}.txt').open('r') as f:
         docs = f.readlines()
     num_docs = len(docs)
-    print(f'Loaded {num_docs} documents from {params.corpus}')
+    print(f'Loaded {num_docs} documents from {corpus_name}')
 
-    if params.shuffle_docs:
+    if shuffle_docs:
         print('Shuffling documents')
         random.seed(shuffle_seed)
         random.shuffle(docs)

@@ -43,7 +43,7 @@ def main(param2val):
     params = Params.from_param2val(param2val)
     print(params)
 
-    train_docs, test_docs = load_docs(params)
+    train_docs, test_docs = load_docs(params.corpus, params.shuffle_docs)
 
     # prepare input
     num_parts = 2  # hardcoded, because this project is for reference/demonstration only
