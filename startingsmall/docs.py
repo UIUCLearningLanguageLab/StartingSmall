@@ -3,7 +3,7 @@ import random
 from startingsmall import config
 
 
-def load_docs(params, num_test_docs=100, seed=3):
+def load_docs(params, num_test_docs=100, shuffle_seed=5, split_seed=3):
     """
     100 test docs + random seed = 3 were used in PH master's thesis
     """
@@ -15,13 +15,13 @@ def load_docs(params, num_test_docs=100, seed=3):
 
     if params.shuffle_docs:
         print('Shuffling documents')
-        random.seed(None)
+        random.seed(shuffle_seed)
         random.shuffle(docs)
 
     # split train/test
     print('Splitting docs into train and test...')
     num_test_doc_ids = num_docs - num_test_docs
-    random.seed(seed)
+    random.seed(split_seed)
     test_doc_ids = random.sample(range(num_test_doc_ids), num_test_docs)
     test_docs = []
     for test_line_id in test_doc_ids:
