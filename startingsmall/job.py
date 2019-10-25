@@ -10,7 +10,7 @@ from preppy.legacy import TrainPrep, TestPrep
 from categoryeval.probestore import ProbeStore
 
 from startingsmall import config
-from startingsmall.input import load_docs
+from startingsmall.docs import load_docs
 from startingsmall.evaluation import update_ba_metrics, update_pp_metrics
 from startingsmall.rnn import RNN
 
@@ -46,9 +46,11 @@ def main(param2val):
     train_docs, test_docs = load_docs(params)
 
     # prepare input
+    num_parts = 2  # hardcoded, because this project is for reference/demonstration only
     train_prep = TrainPrep(train_docs,
                            params.reverse,
                            params.num_types,
+                           num_parts,
                            params.num_iterations,
                            params.batch_size,
                            params.context_size,

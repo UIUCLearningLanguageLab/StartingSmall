@@ -15,6 +15,7 @@ def load_docs(params, num_test_docs=100, seed=3):
 
     if params.shuffle_docs:
         print('Shuffling documents')
+        random.seed(None)
         random.shuffle(docs)
 
     # split train/test
