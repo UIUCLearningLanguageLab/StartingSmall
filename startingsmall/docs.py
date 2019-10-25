@@ -24,11 +24,6 @@ def load_docs(corpus_name: str,
     num_docs = len(docs)
     print(f'Loaded {num_docs} documents from {corpus_name}')
 
-    if shuffle_docs:
-        print('Shuffling documents')
-        random.seed(shuffle_seed)
-        random.shuffle(docs)
-
     # split train/test
     print('Splitting docs into train and test...')
     if test_doc_ids is None:
@@ -42,6 +37,12 @@ def load_docs(corpus_name: str,
     for test_line_id in test_doc_ids:
         test_doc = docs.pop(test_line_id)  # removes line and returns removed line
         test_docs.append(test_doc)
+
+    # shuffle after train/test split
+    if shuffle_docs:
+        print('Shuffling documents')
+        random.seed(shuffle_seed)
+        random.shuffle(docs)
 
     print(f'Collected {len(docs):,} train docs')
     print(f'Collected {len(test_docs):,} test docs')
