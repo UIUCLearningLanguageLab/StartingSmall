@@ -3,7 +3,7 @@ import random
 from startingsmall import config
 
 
-def load_docs(params, num_test_docs=100, shuffle_seed=5, split_seed=3):
+def load_docs(params, num_test_docs=100, shuffle_seed=20, split_seed=3):
     """
     100 test docs + random seed = 3 were used in PH master's thesis
     """
