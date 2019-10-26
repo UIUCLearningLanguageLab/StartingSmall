@@ -7,4 +7,4 @@ numpy==1.17.3
 attrs==19.3.0
 https://github.com/phueb/Ludwig/archive/v1.3.0.tar.gz
 https://github.com/phueb/Preppy/archive/v1.2.0.tar.gz
-https://github.com/phueb/CategoryEval/archive/v1.0.0.tar.gz
+https://github.com/phueb/CategoryEval/archive/v1.0.1.tar.gz
