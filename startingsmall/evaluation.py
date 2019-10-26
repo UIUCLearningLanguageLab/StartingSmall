@@ -58,8 +58,8 @@ def update_ba_metrics(metrics, model, train_prep, probe_store):
     probe_sims_o = cosine_similarity(probe_reps_o)
     probe_sims_n = cosine_similarity(probe_reps_n)
 
-    metrics[config.Metrics.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
-    metrics[config.Metrics.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))
+    metrics[config.Eval.ba_o].append(calc_score(probe_sims_o, probe_store.gold_sims, 'ba'))
+    metrics[config.Eval.ba_n].append(calc_score(probe_sims_n, probe_store.gold_sims, 'ba'))
 
     return metrics
 

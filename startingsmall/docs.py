@@ -4,12 +4,9 @@ from typing import List,Tuple, Optional
 from startingsmall import config
 
 
-childes_mid_doc_ids = tuple(range(1500, 1600))
-
-
 def load_docs(corpus_name: str,
               shuffle_docs: bool,
-              test_doc_ids: Optional[List[int]] = childes_mid_doc_ids,
+              test_doc_ids: Optional[List[int]] = None,
               num_test_docs: Optional[int] = 100,
               shuffle_seed: Optional[int] = 20,
               split_seed: Optional[int] = 3
@@ -31,7 +28,7 @@ def load_docs(corpus_name: str,
         random.seed(split_seed)
         test_doc_ids = random.sample(range(num_test_doc_ids), num_test_docs)
     else:
-        test_doc_ids = test_doc_ids
+        print('WARNING: Using custom test-doc-ids.')
 
     test_docs = []
     for test_line_id in test_doc_ids:

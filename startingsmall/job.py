@@ -43,7 +43,13 @@ def main(param2val):
     params = Params.from_param2val(param2val)
     print(params)
 
-    train_docs, test_docs = load_docs(params.corpus, params.shuffle_docs)
+    # reserve a large chunk of mid-age transcripts for test split
+    # this is a departure from setup in master's thesis - but produces stronger age-order effect
+    mid_doc_ids = list(range(1200, 1800))
+
+    train_docs, test_docs = load_docs(params.corpus,
+                                      params.shuffle_docs,
+                                      test_doc_ids=mid_doc_ids)
 
     # prepare input
     num_parts = 2  # hardcoded, because this project is for reference/demonstration only
@@ -86,8 +92,8 @@ def main(param2val):
     metrics = {
         'train_pp': [],
         'test_pp': [],
-        config.Metrics.ba_o: [],
-        config.Metrics.ba_n: [],
+        config.Eval.ba_o: [],
+        config.Eval.ba_n: [],
     }
 
     # train and eval
@@ -112,11 +118,11 @@ def main(param2val):
         print(flush=True)
 
     # to pandas
-    s1 = pd.Series(metrics[config.Metrics.ba_o], index=train_prep.eval_mbs)
-    s1.name = config.Metrics.ba_o
+    s1 = pd.Series(metrics[config.Eval.ba_o], index=train_prep.eval_mbs)
+    s1.name = config.Eval.ba_o
 
-    s2 = pd.Series(metrics[config.Metrics.ba_n], index=train_prep.eval_mbs)
-    s2.name = config.Metrics.ba_n
+    s2 = pd.Series(metrics[config.Eval.ba_n], index=train_prep.eval_mbs)
+    s2.name = config.Eval.ba_n
 
     s3 = pd.Series(metrics['train_pp'], index=train_prep.eval_mbs)
     s3.name = 'train_pp'

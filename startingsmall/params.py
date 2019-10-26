@@ -3,7 +3,7 @@
 # specify params to submit here
 param2requests = {
     'reverse': [False, True],
-    'shuffle_docs': [False, True],
+    'shuffle_docs': [False],
 }
 
 param2debug = {

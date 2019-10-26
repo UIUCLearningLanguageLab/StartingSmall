@@ -30,8 +30,8 @@ def make_summary_fig(summaries: list,
     # fig
     fig, ax = plt.subplots(figsize=figsize)
     plt.title(title)
-    ax.set_xlabel('Mini Batch', fontsize=config.Figs.axlabel_fs)
-    ax.set_ylabel(ylabel + '\n+/- Std Dev', fontsize=config.Figs.axlabel_fs)
+    ax.set_xlabel('Mini Batch', fontsize=config.Figure.ax_fontsize)
+    ax.set_ylabel(ylabel + '\n+/- Std Dev', fontsize=config.Figure.ax_fontsize)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
@@ -68,16 +68,16 @@ def make_summary_fig(summaries: list,
         except StopIteration:
             raise ValueError('Not enough values in PALETTE_IDS')
 
-        ax.plot(x, y_mean, '-', linewidth=config.Figs.lw, color=color,
+        ax.plot(x, y_mean, '-', linewidth=config.Figure.lw, color=color,
                 label=label, zorder=3 if n == 8 else 2)
         ax.fill_between(x, y_mean + y_std, y_mean - y_std, alpha=0.5, color='grey')
 
     # legend
     if title:
-        plt.legend(fontsize=config.Figs.leg_fs, frameon=False, loc='lower right', ncol=1)
+        plt.legend(fontsize=config.Figure.legend_fontsize, frameon=False, loc='lower right', ncol=1)
     else:
         plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0,
-                   fontsize=config.Figs.leg_fs, frameon=False, loc='lower right', ncol=3)
+                   fontsize=config.Figure.legend_fontsize, frameon=False, loc='lower right', ncol=3)
 
     # max line
     if plot_max_line:

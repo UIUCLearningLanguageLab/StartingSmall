@@ -32,14 +32,12 @@ class Symbols:
 class Eval:
     num_evaluations = 10
 
-
-class Metrics:
     ba_o = 'ba_ordered'
     ba_n = 'ba_none'
 
 
-class Figs:
+class Figure:
     lw = 2
-    axlabel_fs = 12
-    leg_fs = 10
+    ax_fontsize = 12
+    legend_fontsize = 10
     dpi = None
