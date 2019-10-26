@@ -16,8 +16,8 @@ def load_docs(corpus_name: str,
     """
 
     # load CHILDES transcripts as list of strings
-    with (config.RemoteDirs.data / f'{corpus_name}.txt').open('r') as f:
-        docs = f.readlines()
+    p = config.RemoteDirs.data / f'{corpus_name}.txt'
+    docs = p.read_text().split('\n')
     num_docs = len(docs)
     print(f'Loaded {num_docs} documents from {corpus_name}')
 
