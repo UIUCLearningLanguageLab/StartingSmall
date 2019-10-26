@@ -44,8 +44,8 @@ def main(param2val):
     print(params)
 
     # reserve a large chunk of mid-age transcripts for test split
-    # this is a departure from setup in master's thesis - but produces stronger age-order effect
-    mid_doc_ids = list(range(1200, 1800))
+    # this is a departure from setup in master's thesis - but is more transparent
+    mid_doc_ids = list(range(1500, 1600))
 
     train_docs, test_docs = load_docs(params.corpus,
                                       params.shuffle_docs,

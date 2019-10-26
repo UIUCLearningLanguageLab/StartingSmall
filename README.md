@@ -62,7 +62,7 @@ The code is designed to run on multiple machines, at the UIUC Learning & Languag
 If you have access to the lab's file server, you can submit jobs with `Ludwig`:
 
 ```bash
-ludwig -c PATH-TO-PREPPY PATH-TO-CATEGORYEVAL
+ludwig -e PATH-TO-PREPPY PATH-TO-CATEGORYEVAL
 ```
 
 Alternatively, the experiment can be run locally:
