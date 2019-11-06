@@ -52,6 +52,7 @@ def main(param2val):
                                       test_doc_ids=mid_doc_ids)
 
     # prepare input
+    num_evaluations = config.Eval.num_evaluations if not config.Global.debug else 1
     num_parts = 2  # hardcoded, because this project is for reference/demonstration only
     train_prep = TrainPrep(train_docs,
                            params.reverse,
@@ -60,7 +61,7 @@ def main(param2val):
                            params.num_iterations,
                            params.batch_size,
                            params.context_size,
-                           config.Eval.num_evaluations,
+                           num_evaluations,
                            )
     test_prep = TestPrep(test_docs,
                          params.batch_size,

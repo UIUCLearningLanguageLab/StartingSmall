@@ -73,7 +73,7 @@ def make_probe_reps_n(model, probe_store):
     return probe_reps_n
 
 
-def make_probe_reps_o(model, probe_store, train_prep):
+def make_probe_reps_o(model, probe_store, train_prep, verbose=False):
     """
     make probe representations by averaging over all contextualized representations
     """
@@ -87,9 +87,11 @@ def make_probe_reps_o(model, probe_store, train_prep):
         inputs = torch.cuda.LongTensor(x)
         num_exemplars, dim1 = inputs.shape
         assert dim1 == train_prep.context_size
-        print(f'Made {num_exemplars:>6} representations for {train_prep.store.types[vocab_id]:<12}')
         probe_exemplar_reps = model(inputs)['last_encodings'].detach().cpu().numpy()  # [num exemplars, hidden_size]
         probe_reps_o[n] = probe_exemplar_reps.mean(axis=0)
+
+        if verbose:
+            print(f'Made {num_exemplars:>6} representations for {train_prep.store.types[vocab_id]:<12}')
     return probe_reps_o
 
 
