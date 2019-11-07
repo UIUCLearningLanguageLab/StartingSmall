@@ -54,7 +54,8 @@ def make_summary(param_path, label):
 # collect summaries
 summaries = []
 param2requests['shuffle_docs'] = [False]  # do not show results for shuffled_docs=True
-client = Client(config.RemoteDirs.root.name, param2default)
+project_name = Path.cwd().name
+client = Client(project_name, param2default)
 for p, label in client.gen_param_ps(param2requests, runs_path=RUNS_PATH, label_n=LABEL_N):
 
     summary = make_summary(p, label)  # summary contains: x, mean_y, std_y, label, n

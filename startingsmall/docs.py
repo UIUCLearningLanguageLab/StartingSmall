@@ -1,10 +1,9 @@
 import random
 from typing import List,Tuple, Optional
+from pathlib import Path
 
-from startingsmall import config
 
-
-def load_docs(corpus_name: str,
+def load_docs(corpus_path: Path,
               shuffle_docs: bool,
               test_doc_ids: Optional[List[int]] = None,
               num_test_docs: Optional[int] = 100,
@@ -16,10 +15,9 @@ def load_docs(corpus_name: str,
     """
 
     # load CHILDES transcripts as list of strings
-    p = config.RemoteDirs.data / f'{corpus_name}.txt'
-    docs = p.read_text().split('\n')
+    docs = corpus_path.read_text().split('\n')
     num_docs = len(docs)
-    print(f'Loaded {num_docs} documents from {corpus_name}')
+    print(f'Loaded {num_docs} documents from {corpus_path}')
 
     # split train/test
     print('Splitting docs into train and test...')

@@ -16,7 +16,8 @@ class MyTest(unittest.TestCase):
         test that Preppy legacy.TrainPrep.gen_windows() works as expected
         """
 
-        train_docs, test_docs = load_docs(param2default['corpus'],
+        corpus_path = config.LocalDirs.data / f'{param2default["corpus"]}.txt'
+        train_docs, test_docs = load_docs(corpus_path,
                                           param2default['shuffle_docs'])
 
         num_parts = 2

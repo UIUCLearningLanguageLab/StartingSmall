@@ -33,7 +33,7 @@ class Params(object):
     @classmethod
     def from_param2val(cls, param2val):
         kwargs = {k: v for k, v in param2val.items()
-                  if k not in ['job_name', 'param_name']}
+                  if k not in ['job_name', 'param_name', 'project_path', 'save_path']}
         return cls(**kwargs)
 
 
@@ -46,8 +46,9 @@ def main(param2val):
     # reserve a large chunk of mid-age transcripts for test split
     # this is a departure from setup in master's thesis - but is more transparent
     mid_doc_ids = list(range(1500, 1600))
-
-    train_docs, test_docs = load_docs(params.corpus,
+    project_path = param2val['project_path']
+    corpus_path = project_path / 'data' / f'{params.corpus}.txt'
+    train_docs, test_docs = load_docs(corpus_path,
                                       params.shuffle_docs,
                                       test_doc_ids=mid_doc_ids)
 
