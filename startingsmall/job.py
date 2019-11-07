@@ -41,7 +41,7 @@ def main(param2val):
 
     # params
     params = Params.from_param2val(param2val)
-    print(params)
+    print(params, flush=True)
 
     # reserve a large chunk of mid-age transcripts for test split
     # this is a departure from setup in master's thesis - but is more transparent
