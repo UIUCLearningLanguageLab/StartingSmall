@@ -68,7 +68,13 @@ ludwig -e PATH-TO-PREPPY PATH-TO-CATEGORYEVAL
 Alternatively, the experiment can be run locally:
 
 ```bash
-ludwig-local
+ludwig --local
+```
+
+To ensure, no access to the lab's server is attempted:
+
+```bash
+ludwig --local --isolated
 ```
 
 ### Plot results
