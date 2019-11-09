@@ -4,6 +4,7 @@ import attr
 import pandas as pd
 import numpy as np
 import torch
+from pathlib import Path
 
 from preppy.legacy import TrainPrep, TestPrep
 
@@ -46,7 +47,7 @@ def main(param2val):
     # reserve a large chunk of mid-age transcripts for test split
     # this is a departure from setup in master's thesis - but is more transparent
     mid_doc_ids = list(range(1500, 1600))
-    project_path = param2val['project_path']
+    project_path = Path(param2val['project_path'])
     corpus_path = project_path / 'data' / f'{params.corpus}.txt'
     train_docs, test_docs = load_docs(corpus_path,
                                       params.shuffle_docs,
