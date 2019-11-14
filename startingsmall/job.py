@@ -20,6 +20,7 @@ from startingsmall.rnn import RNN
 class Params(object):
     reverse = attr.ib(validator=attr.validators.instance_of(bool))
     shuffle_docs = attr.ib(validator=attr.validators.instance_of(bool))
+    shuffle_sentences = attr.ib(validator=attr.validators.instance_of(bool))
     corpus = attr.ib(validator=attr.validators.instance_of(str))
     probes = attr.ib(validator=attr.validators.instance_of(str))
     num_types = attr.ib(validator=attr.validators.instance_of(int))

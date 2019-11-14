@@ -3,7 +3,7 @@
 # specify params to submit here
 param2requests = {
     'reverse': [False, True],
-    'shuffle_docs': [False],
+    'shuffle_sentences': [False],  # this is an important control - removes age-structure within and across docs
 }
 
 param2debug = {
@@ -14,7 +14,8 @@ param2debug = {
 # default params
 param2default = {
     'reverse': False,
-    'shuffle_docs': False,   # this is an important control (contents of parts are randomly chosen)
+    'shuffle_docs': False,   # this is an imperfect control (does nto remove age-structure within docs)
+    'shuffle_sentences': False,   # this is an important control - removes age-structure within and across docs
     'corpus': 'childes-20180319',
     'probes': 'sem-4096',
     'num_types': 4096,
