@@ -3,16 +3,18 @@ import pandas as pd
 from typing import Optional, List, Tuple
 from pathlib import Path
 
-from ludwig.client import Client
+from ludwig.results import gen_param_paths
 
+from startingsmall import __name__
 from startingsmall import config
 from startingsmall.figs import make_summary_fig
 from startingsmall.params import param2default, param2requests
 
-RUNS_PATH: Optional[Path] = config.LocalDirs.runs   # set to None if using Ludwig
+RESEARCH_DATA_PATH: Optional[Path] = Path('/media/alternate_research_data')
+RUNS_PATH = None  # config.Dirs.runs  # config.Dirs.runs if using local results or None if using results form Ludwig
 FILE_NAME: str = 'ba_ordered.csv'                   # contains trajectory of balanced accuracy
 
-LABEL_N: bool = False                       # add information about number of replications to legend
+LABEL_N: bool = True                       # add information about number of replications to legend
 PLOT_MAX_LINES: bool = False                # plot horizontal line at best overall performance
 PLOT_MAX_LINE: bool = False                 # plot horizontal line at best performance for each param
 PALETTE_IDS: Optional[List[int]] = [1, 0]   # re-assign colors to each line
@@ -54,10 +56,13 @@ def make_summary(param_path, label):
 # collect summaries
 summaries = []
 param2requests['shuffle_docs'] = [False]  # do not show results for shuffled_docs=True
-project_name = Path.cwd().name
-client = Client(project_name, param2default)
-for p, label in client.gen_param_ps(param2requests, runs_path=RUNS_PATH, label_n=LABEL_N):
-
+project_name = __name__
+for p, label in gen_param_paths(project_name,
+                                param2requests,
+                                param2default,
+                                runs_path=RUNS_PATH,
+                                research_data_path=RESEARCH_DATA_PATH,
+                                label_n=LABEL_N):
     summary = make_summary(p, label)  # summary contains: x, mean_y, std_y, label, n
     summaries.append(summary)
     print(f'--------------------- End section {p.name}')
