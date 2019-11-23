@@ -31,6 +31,7 @@ class Params(object):
     hidden_size = attr.ib(validator=attr.validators.instance_of(int))
     lr = attr.ib(validator=attr.validators.instance_of(float))
     optimizer = attr.ib(validator=attr.validators.instance_of(str))
+    shuffle_within_part = attr.ib(validator=attr.validators.instance_of(bool))
 
     @classmethod
     def from_param2val(cls, param2val):
@@ -65,6 +66,7 @@ def main(param2val):
                            params.batch_size,
                            params.context_size,
                            num_evaluations,
+                           params.shuffle_within_part
                            )
     test_prep = TestPrep(test_docs,
                          params.batch_size,

@@ -3,6 +3,7 @@
 # specify params to submit here
 param2requests = {
     'reverse': [False, True],
+    'shuffle_within_part': [True],
     'shuffle_sentences': [False],  # this is an important control - removes age-structure within and across docs
 }
 
@@ -26,6 +27,7 @@ param2default = {
     'hidden_size': 512,  # default: 512
     'lr': 0.01,
     'optimizer': 'adagrad',
+    'shuffle_within_part': False,
 }
 
 # basic validation
