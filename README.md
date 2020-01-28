@@ -8,7 +8,7 @@ To that end, most of the complexity of the original project have been stripped.
 ## Motivation & Results
 
 Theoretical motivation and detailed analyses of the results can be found in Philip Huebner's master's thesis, submitted in August 2019.
-The thesis will become available on his [personal website](http://philhhuebner.com) in early 2020.
+The thesis will become available on his [personal website](http://philhuebner.com) in early 2020.
 
 ## Training Data
 
@@ -36,13 +36,13 @@ To install all the dependencies, execute the following in your virtual environme
 pip install -r requirements.txt
 ```
 
-### Preppy v1.0.0
+### Preppy 1.0.0
 
 The text files are prepared for training using a custom Python package `Preppy`.
 It is available [here](https://github.com/phueb/Preppy).
 It performs no reordering of the input, and assumes instead that the lines in the text file are already in the order that they should be presented to the model.
 
-### CategoryEval v1.0.0
+### CategoryEval 1.0.0
 
 Evaluation of semantic category knowledge requires the custom Python package `CategoryEval`.
 It is available [here](https://github.com/phueb/CategoryEval).
